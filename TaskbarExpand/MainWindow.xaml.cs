@@ -26,8 +26,10 @@ namespace TaskbarExpand
         private Point _dragStartPoint;
         private IntPtr _lastActivatedWindow;
         private DispatcherTimer? _refreshTimer;
+        private bool _isAppBarRegistered;
 
         private const double HORIZONTAL_ITEM_WIDTH = 150;
+        private const int APP_BAR_WIDTH = 280;
 
         public MainWindow()
         {
@@ -44,6 +46,9 @@ namespace TaskbarExpand
             var exStyle = NativeMethods.GetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE);
             NativeMethods.SetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE, exStyle | NativeMethods.WS_EX_NOACTIVATE);
 
+            // AppBar로 등록하여 작업 영역 예약
+            RegisterAppBar();
+
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
             _refreshTimer.Tick += (_, _) => RefreshWindowList();
             _refreshTimer.Start();
@@ -52,7 +57,10 @@ namespace TaskbarExpand
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-            => _refreshTimer?.Stop();
+        {
+            _refreshTimer?.Stop();
+            UnregisterAppBar();
+        }
         #endregion
 
         #region Window List
@@ -108,17 +116,16 @@ namespace TaskbarExpand
 
         private void UpdateHorizontalHeight()
         {
-            var workArea = SystemParameters.WorkArea;
+            // 버튼 영역 (↕, X) 약 80px 제외
             double usableWidth = SystemParameters.PrimaryScreenWidth - 100;
             int itemsPerRow = Math.Max(1, (int)(usableWidth / HORIZONTAL_ITEM_WIDTH));
-            int rows = Math.Max(1, (int)Math.Ceiling((double)_windows.Count / itemsPerRow));
-            double height = Math.Max(48, rows * 36 + 12);
 
-            if (Math.Abs(Height - height) > 1)
-            {
-                Height = height;
-                Top = workArea.Bottom - height;
-            }
+            // 1줄에 다 들어가면 1줄, 넘치면 2줄
+            int rows = _windows.Count <= itemsPerRow ? 1 : 2;
+            int height = rows == 1 ? 40 : 76;
+
+            // AppBar 높이 업데이트
+            SetAppBarPos(NativeMethods.ABE_BOTTOM, height);
         }
         #endregion
 
@@ -248,6 +255,82 @@ namespace TaskbarExpand
         }
         #endregion
 
+        #region AppBar
+        private void RegisterAppBar()
+        {
+            if (_isAppBarRegistered) return;
+
+            var abd = new NativeMethods.APPBARDATA
+            {
+                cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                hWnd = _hwnd
+            };
+
+            // AppBar 등록
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_NEW, ref abd);
+            _isAppBarRegistered = true;
+
+            // 오른쪽 가장자리에 위치 설정
+            SetAppBarPos(NativeMethods.ABE_RIGHT, APP_BAR_WIDTH);
+        }
+
+        private void UnregisterAppBar()
+        {
+            if (!_isAppBarRegistered) return;
+
+            var abd = new NativeMethods.APPBARDATA
+            {
+                cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                hWnd = _hwnd
+            };
+
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_REMOVE, ref abd);
+            _isAppBarRegistered = false;
+        }
+
+        private void SetAppBarPos(uint edge, int size)
+        {
+            var abd = new NativeMethods.APPBARDATA
+            {
+                cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                hWnd = _hwnd,
+                uEdge = edge
+            };
+
+            // 화면 전체 크기 가져오기
+            int screenWidth = (int)SystemParameters.PrimaryScreenWidth;
+            int screenHeight = (int)SystemParameters.PrimaryScreenHeight;
+
+            // 작업 표시줄 영역 계산
+            if (edge == NativeMethods.ABE_RIGHT)
+            {
+                abd.rc.left = screenWidth - size;
+                abd.rc.top = 0;
+                abd.rc.right = screenWidth;
+                abd.rc.bottom = screenHeight;
+            }
+            else if (edge == NativeMethods.ABE_BOTTOM)
+            {
+                abd.rc.left = 0;
+                abd.rc.top = screenHeight - size;
+                abd.rc.right = screenWidth;
+                abd.rc.bottom = screenHeight;
+            }
+
+            // 위치 쿼리 (다른 AppBar와 충돌 조정)
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
+
+            // 위치 설정
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
+
+            // 창 위치 적용
+            Left = abd.rc.left;
+            Top = abd.rc.top;
+            Width = abd.rc.right - abd.rc.left;
+            Height = abd.rc.bottom - abd.rc.top;
+        }
+        #endregion
+
         #region Mode Toggle
         private void ToggleModeButton_Click(object sender, RoutedEventArgs e)
         {
@@ -257,24 +340,19 @@ namespace TaskbarExpand
 
         private void ApplyMode()
         {
-            var workArea = SystemParameters.WorkArea;
-
             if (_isHorizontalMode)
             {
                 VerticalModeContainer.Visibility = Visibility.Collapsed;
                 HorizontalModeContainer.Visibility = Visibility.Visible;
-                Width = SystemParameters.PrimaryScreenWidth;
-                Left = 0;
+                // 가로 모드: 하단에 AppBar 설정 (초기 1줄 높이)
                 UpdateHorizontalHeight();
             }
             else
             {
                 VerticalModeContainer.Visibility = Visibility.Visible;
                 HorizontalModeContainer.Visibility = Visibility.Collapsed;
-                Width = 280;
-                Height = workArea.Height;
-                Left = workArea.Right - Width;
-                Top = workArea.Top;
+                // 세로 모드: 오른쪽에 AppBar 설정
+                SetAppBarPos(NativeMethods.ABE_RIGHT, APP_BAR_WIDTH);
                 ToggleModeButton.Content = "↔";
             }
         }
