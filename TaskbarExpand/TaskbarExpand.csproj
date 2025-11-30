@@ -5,6 +5,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>TaskbarExpand</AssemblyName>
     <RootNamespace>TaskbarExpand</RootNamespace>
     <Version>1.0.0</Version>
@@ -12,9 +13,6 @@
     <Company>TaskbarExpand</Company>
     <Product>Taskbar Expand - Windows 11 보조 작업 표시줄</Product>
     <Description>Windows 11에서 실행 중인 모든 창을 세로 바 형태로 표시하고 빠르게 전환할 수 있는 보조 작업 표시줄</Description>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- DPI Unaware - Windows가 스케일링 처리 (다른 창 스냅 레이아웃에 영향 없음) -->
-    <ApplicationHighDpiMode>DpiUnaware</ApplicationHighDpiMode>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

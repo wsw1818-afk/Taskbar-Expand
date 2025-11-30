@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcopy /Y \"H:\\Claude_work\\publish_temp\\TaskbarExpand.exe\" \"D:\\OneDrive\\코드작업\\결과물\\TaskbarExpand_Play\\TaskbarExpand_v27.exe*\")",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet publish:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

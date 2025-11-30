@@ -13,7 +13,7 @@
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
-        ResizeMode="CanResizeWithGrip"
+        ResizeMode="NoResize"
         MinWidth="200"
         MinHeight="40"
         WindowStartupLocation="Manual"
@@ -23,12 +23,23 @@
         Closing="Window_Closing">
 
     <Window.Resources>
-        <!-- 리스트 아이템 스타일 -->
+        <!-- Windows 11 색상 -->
+        <Color x:Key="TaskbarBackgroundColor">#E8202020</Color>
+        <Color x:Key="TaskbarHoverColor">#40FFFFFF</Color>
+        <Color x:Key="TaskbarSelectedColor">#60FFFFFF</Color>
+        <Color x:Key="TaskbarBorderColor">#30FFFFFF</Color>
+
+        <SolidColorBrush x:Key="TaskbarBackgroundBrush" Color="{StaticResource TaskbarBackgroundColor}"/>
+        <SolidColorBrush x:Key="TaskbarHoverBrush" Color="{StaticResource TaskbarHoverColor}"/>
+        <SolidColorBrush x:Key="TaskbarSelectedBrush" Color="{StaticResource TaskbarSelectedColor}"/>
+        <SolidColorBrush x:Key="TaskbarBorderBrush" Color="{StaticResource TaskbarBorderColor}"/>
+
+        <!-- Windows 11 스타일 리스트 아이템 -->
         <Style x:Key="WindowListItemStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0,1,0,0"/>
-            <Setter Property="Background" Value="#2D2D30"/>
-            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="Margin" Value="4,2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
@@ -37,15 +48,16 @@
                         <Border x:Name="ItemBorder"
                                 Background="{TemplateBinding Background}"
                                 BorderThickness="0"
-                                Padding="8,6">
+                                CornerRadius="4"
+                                Padding="10,8">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#3E3E42"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource TaskbarHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#094771"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource TaskbarSelectedBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -53,28 +65,18 @@
             </Setter>
         </Style>
 
-        <!-- 스크롤바 스타일 (다크 테마) -->
-        <Style x:Key="ScrollBarThumb" TargetType="Thumb">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Thumb">
-                        <Border Background="#686868" CornerRadius="4"/>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
+        <!-- 스크롤바 스타일 (Windows 11) -->
         <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="#3E3E42"/>
-            <Setter Property="Width" Value="8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Width" Value="6"/>
         </Style>
 
-        <!-- 가로 모드용 아이템 스타일 -->
+        <!-- Windows 11 스타일 가로 모드 아이템 -->
         <Style x:Key="HorizontalWindowListItemStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="2,0,0,0"/>
-            <Setter Property="Background" Value="#2D2D30"/>
-            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -82,16 +84,16 @@
                         <Border x:Name="ItemBorder"
                                 Background="{TemplateBinding Background}"
                                 BorderThickness="0"
-                                Padding="8,4"
-                                CornerRadius="3">
+                                CornerRadius="4"
+                                Padding="10,6">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#3E3E42"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource TaskbarHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#094771"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource TaskbarSelectedBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -103,9 +105,10 @@
         <DataTemplate x:Key="HorizontalItemTemplate">
             <StackPanel x:Name="ItemPanel" Orientation="Horizontal" ToolTip="{Binding Title}">
                 <Image Source="{Binding Icon}"
-                       Width="16" Height="16"
-                       Margin="0,0,4,0"
-                       VerticalAlignment="Center">
+                       Width="20" Height="20"
+                       Margin="0,0,6,0"
+                       VerticalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="HighQuality">
                     <Image.Style>
                         <Style TargetType="Image">
                             <Style.Triggers>
@@ -117,11 +120,12 @@
                     </Image.Style>
                 </Image>
                 <TextBlock Text="{Binding Title}"
-                           MaxWidth="120"
+                           MaxWidth="140"
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
-                           FontSize="11"
-                           Foreground="#E0E0E0"/>
+                           FontSize="12"
+                           FontFamily="Segoe UI"
+                           Foreground="White"/>
             </StackPanel>
         </DataTemplate>
 
@@ -134,11 +138,62 @@
         <ItemsPanelTemplate x:Key="VerticalItemsPanel">
             <VirtualizingStackPanel Orientation="Vertical"/>
         </ItemsPanelTemplate>
+
+        <!-- Windows 11 버튼 스타일 -->
+        <Style x:Key="Win11ButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="8,4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource TaskbarHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource TaskbarSelectedBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 닫기 버튼 스타일 -->
+        <Style x:Key="CloseButtonStyle" TargetType="Button" BasedOn="{StaticResource Win11ButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="8,4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#E81123"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <!-- 메인 컨테이너 -->
     <Grid>
-        <!-- 리사이즈 그립 (가장자리) - 세로 모드 전용 -->
+        <!-- 리사이즈 그립 -->
         <Rectangle x:Name="ResizeLeft" Width="5" HorizontalAlignment="Left" Cursor="SizeWE" Fill="Transparent" MouseLeftButtonDown="Resize_MouseLeftButtonDown"/>
         <Rectangle x:Name="ResizeRight" Width="5" HorizontalAlignment="Right" Cursor="SizeWE" Fill="Transparent" MouseLeftButtonDown="Resize_MouseLeftButtonDown"/>
         <Rectangle x:Name="ResizeTop" Height="5" VerticalAlignment="Top" Cursor="SizeNS" Fill="Transparent" MouseLeftButtonDown="Resize_MouseLeftButtonDown"/>
@@ -148,321 +203,227 @@
         <Rectangle x:Name="ResizeBottomLeft" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="SizeNESW" Fill="Transparent" MouseLeftButtonDown="Resize_MouseLeftButtonDown"/>
         <Rectangle x:Name="ResizeBottomRight" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Fill="Transparent" MouseLeftButtonDown="Resize_MouseLeftButtonDown"/>
 
-        <!-- 세로 모드 컨테이너 -->
+        <!-- 세로 모드 컨테이너 (Windows 11 스타일) -->
         <Border x:Name="VerticalModeContainer"
-                Background="#1E1E1E"
-                BorderBrush="#3F3F46"
+                Background="{StaticResource TaskbarBackgroundBrush}"
+                BorderBrush="{StaticResource TaskbarBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
                 Margin="3">
             <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <!-- 헤더 (타이틀 바) -->
-            <Border x:Name="HeaderBorder"
-                    Grid.Row="0"
-                    Background="#252526"
-                    CornerRadius="8,8,0,0"
-                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid Margin="10,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                <!-- 헤더 (Windows 11 스타일) -->
+                <Border x:Name="HeaderBorder"
+                        Grid.Row="0"
+                        Background="Transparent"
+                        CornerRadius="8,8,0,0"
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <Grid Margin="12,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock Text="📋" FontSize="16" Margin="0,0,8,0"/>
-                        <TextBlock Text="실행 중인 창 목록"
-                                   FontSize="13"
+                        <TextBlock Grid.Column="0"
+                                   Text="실행 중인 창"
+                                   FontSize="14"
                                    FontWeight="SemiBold"
-                                   Foreground="#E0E0E0"
+                                   FontFamily="Segoe UI"
+                                   Foreground="White"
                                    VerticalAlignment="Center"/>
-                    </StackPanel>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <!-- 가로/세로 전환 버튼 -->
-                        <Button x:Name="ToggleModeButton"
-                                Content="↔"
-                                Width="28" Height="28"
-                                FontSize="14"
-                                Margin="0,0,6,0"
-                                Background="#3E3E42"
-                                Foreground="#E0E0E0"
-                                BorderThickness="0"
-                                Click="ToggleModeButton_Click"
-                                ToolTip="가로/세로 전환"
-                                Cursor="Hand">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}"
-                                                        CornerRadius="4">
-                                                    <ContentPresenter HorizontalAlignment="Center"
-                                                                      VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#505052"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Content="▦"
+                                    Width="32" Height="32"
+                                    FontSize="14"
+                                    Margin="0,0,4,0"
+                                    Style="{StaticResource Win11ButtonStyle}"
+                                    Click="GroupByAppButton_Click"
+                                    ToolTip="같은 앱끼리 그룹화"/>
 
-                        <!-- 닫기 버튼 -->
-                        <Button Content="✕"
-                                Width="28" Height="28"
-                                FontSize="16"
-                                Background="Transparent"
-                                Foreground="#E0E0E0"
-                                BorderThickness="0"
-                                Click="CloseButton_Click"
-                                Cursor="Hand">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}"
-                                                        CornerRadius="4">
-                                                    <ContentPresenter HorizontalAlignment="Center"
-                                                                      VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#E81123"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                    </StackPanel>
-                </Grid>
-            </Border>
+                            <Button x:Name="ToggleAutoHideButton"
+                                    Content="📌"
+                                    Width="32" Height="32"
+                                    FontSize="14"
+                                    Margin="0,0,4,0"
+                                    Style="{StaticResource Win11ButtonStyle}"
+                                    Click="ToggleAutoHideButton_Click"
+                                    ToolTip="자동 숨김 켜기/끄기"/>
 
-            <!-- 윈도우 리스트 -->
-            <ListBox x:Name="WindowListBox"
-                     Grid.Row="1"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     ScrollViewer.CanContentScroll="False"
-                     VirtualizingStackPanel.ScrollUnit="Pixel"
-                     ItemContainerStyle="{StaticResource WindowListItemStyle}"
-                     SelectionChanged="WindowListBox_SelectionChanged"
-                     AllowDrop="True"
-                     PreviewMouseMove="ListBox_PreviewMouseMove"
-                     Drop="ListBox_Drop"
-                     DragOver="ListBox_DragOver">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Grid x:Name="ItemGrid">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="32"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="24"/>
-                            </Grid.ColumnDefinitions>
+                            <Button x:Name="ToggleModeButton"
+                                    Content="⇄"
+                                    Width="32" Height="32"
+                                    FontSize="16"
+                                    Margin="0,0,4,0"
+                                    Style="{StaticResource Win11ButtonStyle}"
+                                    Click="ToggleModeButton_Click"
+                                    ToolTip="가로/세로 전환"/>
 
-                            <!-- 아이콘 -->
-                            <Image Grid.Column="0"
-                                   Source="{Binding Icon}"
-                                   Width="24" Height="24"
-                                   Margin="0,0,8,0"
-                                   VerticalAlignment="Center">
-                                <Image.Style>
-                                    <Style TargetType="Image">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Image.Style>
-                            </Image>
+                            <Button Content="✕"
+                                    Width="32" Height="32"
+                                    FontSize="14"
+                                    Style="{StaticResource CloseButtonStyle}"
+                                    Click="CloseButton_Click"
+                                    ToolTip="닫기"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
-                            <!-- 텍스트 (아이콘 없을 때 왼쪽 정렬) -->
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding Title}"
-                                       TextTrimming="CharacterEllipsis"
+                <!-- 구분선 -->
+                <Rectangle Grid.Row="0" Height="1" VerticalAlignment="Bottom" Fill="{StaticResource TaskbarBorderBrush}" Margin="12,0"/>
+
+                <!-- 윈도우 리스트 -->
+                <ListBox x:Name="WindowListBox"
+                         Grid.Row="1"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         ScrollViewer.CanContentScroll="False"
+                         VirtualizingStackPanel.ScrollUnit="Pixel"
+                         ItemContainerStyle="{StaticResource WindowListItemStyle}"
+                         SelectionChanged="WindowListBox_SelectionChanged"
+                         AllowDrop="True"
+                         PreviewMouseMove="ListBox_PreviewMouseMove"
+                         Drop="ListBox_Drop"
+                         DragOver="ListBox_DragOver"
+                         Margin="4,8">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid x:Name="ItemGrid">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 아이콘 -->
+                                <Image Grid.Column="0"
+                                       Source="{Binding Icon}"
+                                       Width="24" Height="24"
+                                       Margin="0,0,12,0"
                                        VerticalAlignment="Center"
-                                       FontSize="12"
-                                       Foreground="#E0E0E0"
-                                       ToolTip="{Binding Title}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Grid.Column" Value="1"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
-                                                <Setter Property="Grid.Column" Value="0"/>
-                                                <Setter Property="Grid.ColumnSpan" Value="2"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                                       RenderOptions.BitmapScalingMode="HighQuality">
+                                    <Image.Style>
+                                        <Style TargetType="Image">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Image.Style>
+                                </Image>
 
-                            <!-- 닫기 버튼 (마우스 오버 시 표시) -->
-                            <Button x:Name="CloseWindowButton"
-                                    Grid.Column="2"
-                                    Content="✕"
-                                    Width="20" Height="20"
-                                    FontSize="10"
-                                    VerticalAlignment="Center"
-                                    Click="CloseWindowButton_Click"
-                                    Tag="{Binding Handle}"
-                                    Visibility="Hidden"
-                                    Cursor="Hand">
-                                <Button.Style>
-                                    <Style TargetType="Button">
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="Foreground" Value="#808080"/>
-                                        <Setter Property="BorderThickness" Value="0"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border Background="{TemplateBinding Background}"
-                                                            CornerRadius="3">
-                                                        <ContentPresenter HorizontalAlignment="Center"
-                                                                          VerticalAlignment="Center"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#E81123"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </Grid>
-                        <DataTemplate.Triggers>
-                            <Trigger SourceName="ItemGrid" Property="IsMouseOver" Value="True">
-                                <Setter TargetName="CloseWindowButton" Property="Visibility" Value="Visible"/>
-                            </Trigger>
-                        </DataTemplate.Triggers>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                                <!-- 텍스트 -->
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Title}"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"
+                                           FontSize="13"
+                                           FontFamily="Segoe UI"
+                                           Foreground="White"
+                                           ToolTip="{Binding Title}"/>
 
-            <!-- 푸터 (상태 표시) -->
-            <Border x:Name="FooterBorder"
-                    Grid.Row="2"
-                    Background="#252526"
-                    BorderBrush="#3F3F46"
-                    BorderThickness="0,1,0,0"
-                    CornerRadius="0,0,8,8">
-                <TextBlock x:Name="StatusTextBlock"
-                           Text="로딩 중..."
-                           FontSize="11"
-                           Foreground="#808080"
-                           Margin="10,6"
-                           HorizontalAlignment="Center"/>
-            </Border>
+                                <!-- 닫기 버튼 -->
+                                <Button x:Name="CloseWindowButton"
+                                        Grid.Column="2"
+                                        Content="✕"
+                                        Width="24" Height="24"
+                                        FontSize="10"
+                                        VerticalAlignment="Center"
+                                        Click="CloseWindowButton_Click"
+                                        Tag="{Binding Handle}"
+                                        Visibility="Hidden"
+                                        Style="{StaticResource CloseButtonStyle}"/>
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <Trigger SourceName="ItemGrid" Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="CloseWindowButton" Property="Visibility" Value="Visible"/>
+                                </Trigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- 푸터 -->
+                <Border x:Name="FooterBorder"
+                        Grid.Row="2"
+                        Background="Transparent"
+                        CornerRadius="0,0,8,8">
+                    <StackPanel Margin="12,8">
+                        <Rectangle Height="1" Fill="{StaticResource TaskbarBorderBrush}" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="StatusTextBlock"
+                                   Text="로딩 중..."
+                                   FontSize="11"
+                                   FontFamily="Segoe UI"
+                                   Foreground="#A0FFFFFF"
+                                   HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 
-        <!-- 가로 모드 컨테이너 (완전히 별개의 레이아웃) -->
+        <!-- 가로 모드 컨테이너 (Windows 11 스타일) -->
         <Border x:Name="HorizontalModeContainer"
-                Background="#1E1E1E"
-                BorderBrush="#3F3F46"
+                Background="{StaticResource TaskbarBackgroundBrush}"
+                BorderBrush="{StaticResource TaskbarBorderBrush}"
                 BorderThickness="0,1,0,0"
                 Visibility="Collapsed">
             <DockPanel LastChildFill="True">
-                <!-- 가로 모드 컴팩트 버튼 (오른쪽 고정) -->
+                <!-- 오른쪽 버튼들 -->
                 <StackPanel DockPanel.Dock="Right"
                             Orientation="Horizontal"
                             VerticalAlignment="Center"
-                            Margin="4,0,8,0">
-                    <!-- 세로 모드 전환 버튼 -->
-                    <Button Content="↕"
-                            Width="32" Height="32"
+                            Margin="8,0,12,0">
+                    <Button Content="▦"
+                            Width="36" Height="36"
+                            FontSize="14"
+                            Margin="0,0,4,0"
+                            Style="{StaticResource Win11ButtonStyle}"
+                            Click="GroupByAppButton_Click"
+                            ToolTip="같은 앱끼리 그룹화"/>
+                    <Button x:Name="HorizontalAutoHideButton"
+                            Content="📌"
+                            Width="36" Height="36"
+                            FontSize="14"
+                            Margin="0,0,4,0"
+                            Style="{StaticResource Win11ButtonStyle}"
+                            Click="ToggleAutoHideButton_Click"
+                            ToolTip="자동 숨김 켜기/끄기"/>
+                    <Button Content="⇅"
+                            Width="36" Height="36"
                             FontSize="16"
                             Margin="0,0,4,0"
-                            Background="#3E3E42"
-                            Foreground="#E0E0E0"
-                            BorderThickness="0"
+                            Style="{StaticResource Win11ButtonStyle}"
                             Click="ToggleModeButton_Click"
-                            ToolTip="세로 모드로 전환"
-                            Cursor="Hand">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" CornerRadius="4">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#505052"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <!-- 앱 종료 버튼 -->
+                            ToolTip="세로 모드로 전환"/>
                     <Button Content="✕"
-                            Width="32" Height="32"
-                            FontSize="16"
-                            Background="#3E3E42"
-                            Foreground="#E0E0E0"
-                            BorderThickness="0"
+                            Width="36" Height="36"
+                            FontSize="14"
+                            Style="{StaticResource CloseButtonStyle}"
                             Click="CloseButton_Click"
-                            ToolTip="앱 종료"
-                            Cursor="Hand">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" CornerRadius="4">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#E81123"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
+                            ToolTip="앱 종료"/>
                 </StackPanel>
 
-                <!-- 가로 모드 윈도우 리스트 (나머지 공간) -->
+                <!-- 가로 모드 윈도우 리스트 -->
                 <ListBox x:Name="HorizontalWindowListBox"
                          Background="Transparent"
                          BorderThickness="0"
-                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ScrollViewer.VerticalScrollBarVisibility="Disabled"
                          ScrollViewer.CanContentScroll="False"
                          ItemContainerStyle="{StaticResource HorizontalWindowListItemStyle}"
                          ItemTemplate="{StaticResource HorizontalItemTemplate}"
                          ItemsPanel="{StaticResource HorizontalItemsPanel}"
                          SelectionChanged="HorizontalWindowListBox_SelectionChanged"
-                         Margin="4,2,0,2"
-                         VerticalAlignment="Center"
+                         Margin="8,2,0,2"
+                         VerticalAlignment="Stretch"
                          AllowDrop="True"
                          PreviewMouseMove="ListBox_PreviewMouseMove"
                          Drop="ListBox_Drop"

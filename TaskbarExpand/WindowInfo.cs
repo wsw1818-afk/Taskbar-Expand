@@ -5,6 +5,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media.Imaging;
 
 namespace TaskbarExpand
@@ -13,6 +15,9 @@ namespace TaskbarExpand
     {
         // 아이콘 캐시 (프로세스 경로별)
         private static readonly ConcurrentDictionary<string, BitmapSource?> _iconCache = new();
+
+        // 아이콘 로딩 중인 경로 추적 (중복 로딩 방지)
+        private static readonly ConcurrentDictionary<string, bool> _loadingPaths = new();
 
         // 제외할 클래스 이름 (static readonly - 한 번만 할당)
         private static readonly HashSet<string> ExcludedClasses = new(StringComparer.OrdinalIgnoreCase)
@@ -30,6 +35,7 @@ namespace TaskbarExpand
         private BitmapSource? _icon;
 
         public IntPtr Handle { get; set; }
+        public string? ProcessPath { get; private set; }
 
         public string? Title
         {
@@ -71,36 +77,80 @@ namespace TaskbarExpand
             NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
             info.ProcessId = pid;
 
-            // 아이콘 (캐시 사용)
-            info.Icon = GetCachedIcon(pid);
+            // 프로세스 경로 가져오기 (빠름)
+            info.ProcessPath = GetProcessPath(pid);
+
+            // 캐시된 아이콘이 있으면 즉시 사용
+            if (info.ProcessPath != null && _iconCache.TryGetValue(info.ProcessPath, out var cachedIcon))
+            {
+                info.Icon = cachedIcon;
+            }
+            else
+            {
+                // 비동기로 아이콘 로딩
+                info.LoadIconAsync();
+            }
 
             return info;
         }
 
-        private static BitmapSource? GetCachedIcon(uint processId)
+        private static string? GetProcessPath(uint processId)
         {
             try
             {
                 var proc = Process.GetProcessById((int)processId);
-                var path = proc.MainModule?.FileName;
-                if (string.IsNullOrEmpty(path)) return null;
+                return proc.MainModule?.FileName;
+            }
+            catch { return null; }
+        }
 
-                return _iconCache.GetOrAdd(path, p =>
+        private async void LoadIconAsync()
+        {
+            if (string.IsNullOrEmpty(ProcessPath)) return;
+
+            // 이미 로딩 중이면 대기
+            if (!_loadingPaths.TryAdd(ProcessPath, true))
+            {
+                // 다른 곳에서 로딩 중 - 잠시 후 캐시 확인
+                await Task.Delay(100);
+                if (_iconCache.TryGetValue(ProcessPath, out var icon))
                 {
-                    try
-                    {
-                        using var icon = System.Drawing.Icon.ExtractAssociatedIcon(p);
-                        if (icon == null) return null;
+                    Icon = icon;
+                }
+                return;
+            }
 
-                        var bmp = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                            icon.Handle,
-                            System.Windows.Int32Rect.Empty,
-                            BitmapSizeOptions.FromEmptyOptions());
-                        bmp.Freeze(); // 스레드 안전 + 성능
-                        return bmp;
-                    }
-                    catch { return null; }
-                });
+            try
+            {
+                var path = ProcessPath;
+                var icon = await Task.Run(() => ExtractIcon(path));
+
+                if (icon != null)
+                {
+                    _iconCache.TryAdd(path, icon);
+                    // UI 스레드에서 아이콘 설정
+                    Application.Current?.Dispatcher?.Invoke(() => Icon = icon);
+                }
+            }
+            finally
+            {
+                _loadingPaths.TryRemove(ProcessPath, out _);
+            }
+        }
+
+        private static BitmapSource? ExtractIcon(string path)
+        {
+            try
+            {
+                using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                if (icon == null) return null;
+
+                var bmp = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                    icon.Handle,
+                    Int32Rect.Empty,
+                    BitmapSizeOptions.FromEmptyOptions());
+                bmp.Freeze(); // 스레드 안전 + 성능
+                return bmp;
             }
             catch { return null; }
         }

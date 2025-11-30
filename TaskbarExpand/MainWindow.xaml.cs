@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,10 +27,18 @@ namespace TaskbarExpand
         private Point _dragStartPoint;
         private IntPtr _lastActivatedWindow;
         private DispatcherTimer? _refreshTimer;
+        private DispatcherTimer? _autoHideTimer;
+        private DispatcherTimer? _hideDelayTimer;
         private bool _isAppBarRegistered;
+        private System.Windows.Forms.Screen? _currentScreen;
+        private bool _isAutoHideEnabled;
+        private bool _isHidden;
+        private int _lastHorizontalHeight;
 
-        private const double HORIZONTAL_ITEM_WIDTH = 150;
-        private const int APP_BAR_WIDTH = 280;
+        private const double HORIZONTAL_ITEM_WIDTH = 100;
+        private const int APPBAR_WIDTH = 280;
+        private const int AUTO_HIDE_DELAY = 300; // 숨김 지연 시간 (ms)
+        private const int EDGE_DETECTION_SIZE = 8; // 가장자리 감지 영역 (px)
 
         public MainWindow()
         {
@@ -46,20 +55,146 @@ namespace TaskbarExpand
             var exStyle = NativeMethods.GetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE);
             NativeMethods.SetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE, exStyle | NativeMethods.WS_EX_NOACTIVATE);
 
-            // AppBar로 등록하여 작업 영역 예약
+            // 마우스 커서 위치로 현재 모니터 감지
+            var cursorPos = System.Windows.Forms.Cursor.Position;
+            _currentScreen = System.Windows.Forms.Screen.FromPoint(cursorPos);
+
+            // AppBar 등록 (다른 창들이 리사이즈되도록)
             RegisterAppBar();
 
+            // 타이머 설정 (시작은 지연)
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
             _refreshTimer.Tick += (_, _) => RefreshWindowList();
-            _refreshTimer.Start();
 
-            RefreshWindowList();
+            _autoHideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+            _autoHideTimer.Tick += AutoHideTimer_Tick;
+
+            _hideDelayTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(AUTO_HIDE_DELAY) };
+            _hideDelayTimer.Tick += HideDelayTimer_Tick;
+
+            // UI 렌더링 완료 후 창 목록 로드 (버벅임 방지)
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+            {
+                RefreshWindowList();
+                _refreshTimer?.Start();
+            });
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _refreshTimer?.Stop();
+            _autoHideTimer?.Stop();
+            _hideDelayTimer?.Stop();
             UnregisterAppBar();
+        }
+        #endregion
+
+        #region AppBar
+        private void RegisterAppBar()
+        {
+            if (_isAppBarRegistered) return;
+
+            var abd = new NativeMethods.APPBARDATA
+            {
+                cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                hWnd = _hwnd
+            };
+
+            // AppBar 등록
+            if (NativeMethods.SHAppBarMessage(NativeMethods.ABM_NEW, ref abd) != 0)
+            {
+                _isAppBarRegistered = true;
+                SetAppBarPos();
+            }
+        }
+
+        private void UnregisterAppBar()
+        {
+            if (!_isAppBarRegistered) return;
+
+            var abd = new NativeMethods.APPBARDATA
+            {
+                cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                hWnd = _hwnd
+            };
+
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_REMOVE, ref abd);
+            _isAppBarRegistered = false;
+        }
+
+        private void SetAppBarPos()
+        {
+            if (!_isAppBarRegistered) return;
+
+            var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
+            if (screen == null) return;
+
+            var workArea = screen.WorkingArea;
+            NativeMethods.APPBARDATA abd;
+
+            if (_isHorizontalMode)
+            {
+                // 가로 모드: 하단에 배치 (WorkingArea 사용)
+                int horizontalHeight = CalculateHorizontalHeight(workArea.Width);
+                _lastHorizontalHeight = horizontalHeight;
+
+                abd = new NativeMethods.APPBARDATA
+                {
+                    cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                    hWnd = _hwnd,
+                    uEdge = NativeMethods.ABE_BOTTOM,
+                    rc = new NativeMethods.RECT
+                    {
+                        left = workArea.Left,
+                        top = workArea.Bottom - horizontalHeight,
+                        right = workArea.Right,
+                        bottom = workArea.Bottom
+                    }
+                };
+            }
+            else
+            {
+                // 세로 모드: 오른쪽에 배치 (WorkingArea 사용)
+                abd = new NativeMethods.APPBARDATA
+                {
+                    cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                    hWnd = _hwnd,
+                    uEdge = NativeMethods.ABE_RIGHT,
+                    rc = new NativeMethods.RECT
+                    {
+                        left = workArea.Right - APPBAR_WIDTH,
+                        top = workArea.Top,
+                        right = workArea.Right,
+                        bottom = workArea.Bottom
+                    }
+                };
+            }
+
+            // 위치 쿼리
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
+
+            // 위치 설정
+            NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
+
+            // 창 위치/크기 적용
+            Width = abd.rc.right - abd.rc.left;
+            Height = abd.rc.bottom - abd.rc.top;
+            Left = abd.rc.left;
+            Top = abd.rc.top;
+        }
+
+        private int CalculateHorizontalHeight(int screenWidth = 0)
+        {
+            if (screenWidth == 0)
+            {
+                var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
+                screenWidth = screen?.Bounds.Width ?? (int)SystemParameters.PrimaryScreenWidth;
+            }
+            double usableWidth = screenWidth - 100;
+            int itemsPerRow = Math.Max(1, (int)(usableWidth / HORIZONTAL_ITEM_WIDTH));
+            int rows = Math.Max(1, (int)Math.Ceiling((double)_windows.Count / itemsPerRow));
+            rows = Math.Min(rows, 2);
+            return rows == 1 ? 48 : 88;
         }
         #endregion
 
@@ -116,16 +251,23 @@ namespace TaskbarExpand
 
         private void UpdateHorizontalHeight()
         {
-            // 버튼 영역 (↕, X) 약 80px 제외
-            double usableWidth = SystemParameters.PrimaryScreenWidth - 100;
-            int itemsPerRow = Math.Max(1, (int)(usableWidth / HORIZONTAL_ITEM_WIDTH));
+            if (!_isHorizontalMode) return;
 
-            // 1줄에 다 들어가면 1줄, 넘치면 2줄
-            int rows = _windows.Count <= itemsPerRow ? 1 : 2;
-            int height = rows == 1 ? 40 : 76;
+            int newHeight = CalculateHorizontalHeight();
 
-            // AppBar 높이 업데이트
-            SetAppBarPos(NativeMethods.ABE_BOTTOM, height);
+            // 높이가 변경되면 재설정
+            if (_lastHorizontalHeight != newHeight)
+            {
+                _lastHorizontalHeight = newHeight;
+                if (_isAppBarRegistered)
+                {
+                    SetAppBarPos();
+                }
+                else if (_isAutoHideEnabled && !_isHidden)
+                {
+                    SetAutoHidePosition(true);
+                }
+            }
         }
         #endregion
 
@@ -178,7 +320,9 @@ namespace TaskbarExpand
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 1) DragMove();
+            // AppBar 모드에서는 드래그 이동 비활성화
+            if (!_isAppBarRegistered && e.ClickCount == 1)
+                DragMove();
         }
         #endregion
 
@@ -242,6 +386,9 @@ namespace TaskbarExpand
         #region Resize
         private void Resize_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // AppBar 모드에서는 리사이즈 비활성화
+            if (_isAppBarRegistered) return;
+
             if (sender is Rectangle { Name: var name })
             {
                 int dir = name switch
@@ -255,82 +402,6 @@ namespace TaskbarExpand
         }
         #endregion
 
-        #region AppBar
-        private void RegisterAppBar()
-        {
-            if (_isAppBarRegistered) return;
-
-            var abd = new NativeMethods.APPBARDATA
-            {
-                cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
-                hWnd = _hwnd
-            };
-
-            // AppBar 등록
-            NativeMethods.SHAppBarMessage(NativeMethods.ABM_NEW, ref abd);
-            _isAppBarRegistered = true;
-
-            // 오른쪽 가장자리에 위치 설정
-            SetAppBarPos(NativeMethods.ABE_RIGHT, APP_BAR_WIDTH);
-        }
-
-        private void UnregisterAppBar()
-        {
-            if (!_isAppBarRegistered) return;
-
-            var abd = new NativeMethods.APPBARDATA
-            {
-                cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
-                hWnd = _hwnd
-            };
-
-            NativeMethods.SHAppBarMessage(NativeMethods.ABM_REMOVE, ref abd);
-            _isAppBarRegistered = false;
-        }
-
-        private void SetAppBarPos(uint edge, int size)
-        {
-            var abd = new NativeMethods.APPBARDATA
-            {
-                cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
-                hWnd = _hwnd,
-                uEdge = edge
-            };
-
-            // 화면 전체 크기 가져오기
-            int screenWidth = (int)SystemParameters.PrimaryScreenWidth;
-            int screenHeight = (int)SystemParameters.PrimaryScreenHeight;
-
-            // 작업 표시줄 영역 계산
-            if (edge == NativeMethods.ABE_RIGHT)
-            {
-                abd.rc.left = screenWidth - size;
-                abd.rc.top = 0;
-                abd.rc.right = screenWidth;
-                abd.rc.bottom = screenHeight;
-            }
-            else if (edge == NativeMethods.ABE_BOTTOM)
-            {
-                abd.rc.left = 0;
-                abd.rc.top = screenHeight - size;
-                abd.rc.right = screenWidth;
-                abd.rc.bottom = screenHeight;
-            }
-
-            // 위치 쿼리 (다른 AppBar와 충돌 조정)
-            NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
-
-            // 위치 설정
-            NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
-
-            // 창 위치 적용
-            Left = abd.rc.left;
-            Top = abd.rc.top;
-            Width = abd.rc.right - abd.rc.left;
-            Height = abd.rc.bottom - abd.rc.top;
-        }
-        #endregion
-
         #region Mode Toggle
         private void ToggleModeButton_Click(object sender, RoutedEventArgs e)
         {
@@ -340,20 +411,241 @@ namespace TaskbarExpand
 
         private void ApplyMode()
         {
+            // 먼저 AppBar 해제 (edge 변경을 위해)
+            UnregisterAppBar();
+            _hideDelayTimer?.Stop();
+
+            // 숨김 상태 초기화
+            _isHidden = false;
+            _lastHorizontalHeight = 0;
+
             if (_isHorizontalMode)
             {
                 VerticalModeContainer.Visibility = Visibility.Collapsed;
                 HorizontalModeContainer.Visibility = Visibility.Visible;
-                // 가로 모드: 하단에 AppBar 설정 (초기 1줄 높이)
-                UpdateHorizontalHeight();
             }
             else
             {
                 VerticalModeContainer.Visibility = Visibility.Visible;
                 HorizontalModeContainer.Visibility = Visibility.Collapsed;
-                // 세로 모드: 오른쪽에 AppBar 설정
-                SetAppBarPos(NativeMethods.ABE_RIGHT, APP_BAR_WIDTH);
-                ToggleModeButton.Content = "↔";
+                ToggleModeButton.Content = "⇄";
+            }
+
+            // AppBar 재등록 (새 edge로)
+            if (!_isAutoHideEnabled)
+            {
+                RegisterAppBar();
+            }
+            else
+            {
+                // 자동 숨김 모드에서는 보이는 상태로 시작
+                SetAutoHidePosition(true);
+            }
+        }
+
+        private void ToggleAutoHideButton_Click(object sender, RoutedEventArgs e)
+        {
+            _isAutoHideEnabled = !_isAutoHideEnabled;
+            UpdateAutoHideButtonIcon();
+
+            if (_isAutoHideEnabled)
+            {
+                // AppBar 해제하고 자동 숨김 모드로
+                UnregisterAppBar();
+                _isHidden = false;
+                SetAutoHidePosition(true); // 먼저 보이는 상태로 시작
+                _autoHideTimer?.Start();
+            }
+            else
+            {
+                // 자동 숨김 타이머 정지
+                _autoHideTimer?.Stop();
+                _hideDelayTimer?.Stop();
+                // AppBar 다시 등록
+                _isHidden = false;
+                RegisterAppBar();
+            }
+        }
+
+        private void UpdateAutoHideButtonIcon()
+        {
+            string icon = _isAutoHideEnabled ? "📍" : "📌";
+            ToggleAutoHideButton.Content = icon;
+            HorizontalAutoHideButton.Content = icon;
+        }
+
+        private void GroupByAppButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 같은 프로그램끼리 그룹화 (프로세스 경로 기준)
+            var grouped = _windows
+                .Select((w, i) => new { Window = w, Index = i })
+                .GroupBy(x => x.Window.ProcessPath ?? x.Window.ProcessId.ToString())
+                .SelectMany(g => g.Select(x => x.Window))
+                .ToList();
+
+            // 기존 순서와 다르면 재정렬
+            bool needsReorder = false;
+            for (int i = 0; i < grouped.Count; i++)
+            {
+                if (_windows[i] != grouped[i])
+                {
+                    needsReorder = true;
+                    break;
+                }
+            }
+
+            if (needsReorder)
+            {
+                // 컬렉션 재정렬
+                for (int i = 0; i < grouped.Count; i++)
+                {
+                    int currentIndex = _windows.IndexOf(grouped[i]);
+                    if (currentIndex != i)
+                    {
+                        _windows.Move(currentIndex, i);
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region Auto Hide
+        private void AutoHideTimer_Tick(object? sender, EventArgs e)
+        {
+            if (!_isAutoHideEnabled) return;
+
+            var cursorPos = System.Windows.Forms.Cursor.Position;
+            var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
+            if (screen == null) return;
+
+            bool isOverWindow = IsMouseOverWindow();
+            bool isAtEdge = IsMouseAtEdge(cursorPos, screen);
+
+            if (_isHidden)
+            {
+                // 숨김 상태: 가장자리에 마우스가 있으면 즉시 표시
+                if (isAtEdge)
+                {
+                    _hideDelayTimer?.Stop();
+                    ShowBar();
+                }
+            }
+            else
+            {
+                // 표시 상태: 마우스가 창 위나 가장자리에 있으면 유지
+                if (isOverWindow || isAtEdge)
+                {
+                    _hideDelayTimer?.Stop();
+                }
+                else
+                {
+                    // 마우스가 벗어났으면 지연 후 숨김
+                    if (_hideDelayTimer != null && !_hideDelayTimer.IsEnabled)
+                    {
+                        _hideDelayTimer.Start();
+                    }
+                }
+            }
+        }
+
+        private void HideDelayTimer_Tick(object? sender, EventArgs e)
+        {
+            _hideDelayTimer?.Stop();
+            if (_isAutoHideEnabled && !_isHidden && !IsMouseOverWindow())
+            {
+                HideBar();
+            }
+        }
+
+        private bool IsMouseAtEdge(System.Drawing.Point cursorPos, System.Windows.Forms.Screen screen)
+        {
+            var workArea = screen.WorkingArea;
+
+            if (_isHorizontalMode)
+            {
+                // 가로 모드: 하단 가장자리 감지 (WorkingArea 기준)
+                return cursorPos.Y >= workArea.Bottom - EDGE_DETECTION_SIZE &&
+                       cursorPos.Y <= workArea.Bottom &&
+                       cursorPos.X >= workArea.Left &&
+                       cursorPos.X <= workArea.Right;
+            }
+            else
+            {
+                // 세로 모드: 오른쪽 가장자리 감지 (WorkingArea 기준)
+                return cursorPos.X >= workArea.Right - EDGE_DETECTION_SIZE &&
+                       cursorPos.X <= workArea.Right &&
+                       cursorPos.Y >= workArea.Top &&
+                       cursorPos.Y <= workArea.Bottom;
+            }
+        }
+
+        private bool IsMouseOverWindow()
+        {
+            var cursorPos = System.Windows.Forms.Cursor.Position;
+            return cursorPos.X >= Left && cursorPos.X <= Left + Width &&
+                   cursorPos.Y >= Top && cursorPos.Y <= Top + Height;
+        }
+
+        private void ShowBar()
+        {
+            _isHidden = false;
+            SetAutoHidePosition(true);
+        }
+
+        private void HideBar()
+        {
+            _isHidden = true;
+            SetAutoHidePosition(false);
+        }
+
+        private void SetAutoHidePosition(bool visible)
+        {
+            try
+            {
+                var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
+                if (screen == null) return;
+
+                // WorkingArea 사용 (작업 표시줄 제외한 영역)
+                var workArea = screen.WorkingArea;
+
+                if (_isHorizontalMode)
+                {
+                    int horizontalHeight = CalculateHorizontalHeight(workArea.Width);
+                    Width = workArea.Width;
+                    Height = horizontalHeight;
+                    Left = workArea.Left;
+
+                    if (visible)
+                    {
+                        // 작업 영역 하단에 배치
+                        Top = workArea.Bottom - horizontalHeight;
+                    }
+                    else
+                    {
+                        // 숨김 상태: 3px만 보이게
+                        Top = workArea.Bottom - 3;
+                    }
+                }
+                else
+                {
+                    Width = APPBAR_WIDTH;
+                    Height = workArea.Height;
+                    Top = workArea.Top;
+
+                    if (visible)
+                    {
+                        Left = workArea.Right - APPBAR_WIDTH;
+                    }
+                    else
+                    {
+                        // 숨김 상태: 3px만 보이게
+                        Left = workArea.Right - 3;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 모드 전환 중 발생할 수 있는 예외 무시
             }
         }
         #endregion
