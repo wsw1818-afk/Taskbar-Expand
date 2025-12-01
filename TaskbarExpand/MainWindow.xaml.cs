@@ -34,7 +34,6 @@ namespace TaskbarExpand
         private bool _isAutoHideEnabled;
         private bool _isHidden;
         private int _lastHorizontalHeight;
-        private int _savedWorkAreaBottom; // 자동숨김→고정 전환 시 사용
 
         private const double HORIZONTAL_ITEM_WIDTH = 100;
         private const int APPBAR_WIDTH = 280;
@@ -141,13 +140,12 @@ namespace TaskbarExpand
                 int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
                 _lastHorizontalHeight = horizontalHeight;
 
-                // _savedWorkAreaBottom이 설정되어 있으면 그 값 사용 (자동숨김→고정 전환 시)
-                // 그렇지 않으면 현재 workArea.Bottom 사용
-                int effectiveBottom = _savedWorkAreaBottom > 0 ? _savedWorkAreaBottom : workArea.Bottom;
-                _savedWorkAreaBottom = 0; // 사용 후 초기화
+                // Windows 작업표시줄의 실제 Top 위치를 직접 찾아서 사용
+                // 이렇게 하면 workArea 변동과 관계없이 항상 정확한 위치에 배치됨
+                int winTaskbarTop = GetWindowsTaskbarTop(bounds);
 
-                int targetTop = effectiveBottom - horizontalHeight;
-                int targetBottom = effectiveBottom;
+                int targetTop = winTaskbarTop - horizontalHeight;
+                int targetBottom = winTaskbarTop;
 
                 abd = new NativeMethods.APPBARDATA
                 {
@@ -163,18 +161,13 @@ namespace TaskbarExpand
                     }
                 };
 
-                // 위치 쿼리 - 시스템에 우리가 원하는 영역 알림
+                // 위치 쿼리 및 설정
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
-
-                // 중요: 시스템이 bottom을 조정해도, 우리는 원래 원하는 위치 유지
-                // Windows 작업표시줄 바로 위에 붙어야 하므로 bottom은 effectiveBottom 유지
                 abd.rc.top = targetTop;
                 abd.rc.bottom = targetBottom;
-
-                // 위치 설정
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
 
-                // 창 위치/크기 적용 - 시스템 응답 무시하고 우리가 원하는 값 강제 적용
+                // 창 위치/크기 적용 - 계산한 값 강제 적용
                 Width = bounds.Width;
                 Height = horizontalHeight;
                 Left = bounds.Left;
@@ -223,6 +216,29 @@ namespace TaskbarExpand
             int rows = Math.Max(1, (int)Math.Ceiling((double)_windows.Count / itemsPerRow));
             rows = Math.Min(rows, 2);
             return rows == 1 ? 48 : 88;
+        }
+
+        /// <summary>
+        /// Windows 작업표시줄(Shell_TrayWnd)의 실제 Top 위치를 찾습니다.
+        /// </summary>
+        private int GetWindowsTaskbarTop(System.Drawing.Rectangle bounds)
+        {
+            // Shell_TrayWnd 클래스 이름으로 Windows 작업표시줄 찾기
+            IntPtr taskbarHwnd = NativeMethods.FindWindow("Shell_TrayWnd", null);
+            if (taskbarHwnd != IntPtr.Zero)
+            {
+                if (NativeMethods.GetWindowRect(taskbarHwnd, out NativeMethods.RECT rect))
+                {
+                    // 작업표시줄이 하단에 있는 경우 Top 반환
+                    if (rect.top > bounds.Height / 2)
+                    {
+                        return rect.top;
+                    }
+                }
+            }
+
+            // 찾지 못하면 Bounds.Bottom - 48 (기본 작업표시줄 높이) 반환
+            return bounds.Bottom - 48;
         }
         #endregion
 
@@ -494,14 +510,7 @@ namespace TaskbarExpand
                 _hideDelayTimer?.Stop();
                 _isHidden = false;
 
-                // 중요: AppBar 등록 전에 현재 workArea 저장 (ABM_NEW 후 workArea가 변경될 수 있음)
-                var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
-                if (screen != null)
-                {
-                    _savedWorkAreaBottom = screen.WorkingArea.Bottom;
-                }
-
-                // AppBar 등록
+                // AppBar 등록 (Windows 작업표시줄 위치를 직접 찾으므로 workArea 저장 불필요)
                 RegisterAppBar();
             }
         }

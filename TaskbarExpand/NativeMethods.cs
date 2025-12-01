@@ -92,6 +92,15 @@ namespace TaskbarExpand
         public const uint WM_CLOSE = 0x0010;
         #endregion
 
+        #region Window Rect
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
+        #endregion
+
         #region AppBar
         [DllImport("shell32.dll", CallingConvention = CallingConvention.StdCall)]
         public static extern uint SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);

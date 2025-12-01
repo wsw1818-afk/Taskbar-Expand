@@ -1,1 +1,1 @@
-🐛 가로 모드 AppBar 위치 - 시스템 응답 무시하고 원하는 위치 강제 적용
+🐛 가로 모드 AppBar 위치 - Windows 작업표시줄(Shell_TrayWnd) 실제 위치 직접 찾아서 배치
