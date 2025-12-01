@@ -163,20 +163,22 @@ namespace TaskbarExpand
                     }
                 };
 
-                // 위치 쿼리
+                // 위치 쿼리 - 시스템에 우리가 원하는 영역 알림
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
 
-                // 시스템이 조정한 bottom 값 기준으로 top 재계산
-                abd.rc.top = abd.rc.bottom - horizontalHeight;
+                // 중요: 시스템이 bottom을 조정해도, 우리는 원래 원하는 위치 유지
+                // Windows 작업표시줄 바로 위에 붙어야 하므로 bottom은 effectiveBottom 유지
+                abd.rc.top = targetTop;
+                abd.rc.bottom = targetBottom;
 
                 // 위치 설정
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
 
-                // 창 위치/크기 적용 - ABM_SETPOS 결과 사용
-                Width = abd.rc.right - abd.rc.left;
-                Height = abd.rc.bottom - abd.rc.top;
-                Left = abd.rc.left;
-                Top = abd.rc.top;
+                // 창 위치/크기 적용 - 시스템 응답 무시하고 우리가 원하는 값 강제 적용
+                Width = bounds.Width;
+                Height = horizontalHeight;
+                Left = bounds.Left;
+                Top = targetTop;
             }
             else
             {
