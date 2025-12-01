@@ -464,8 +464,12 @@ namespace TaskbarExpand
                 // 자동 숨김 타이머 정지
                 _autoHideTimer?.Stop();
                 _hideDelayTimer?.Stop();
-                // AppBar 다시 등록
                 _isHidden = false;
+
+                // 창 크기를 먼저 원래대로 복원
+                SetAutoHidePosition(true);
+
+                // AppBar 등록
                 RegisterAppBar();
             }
         }
