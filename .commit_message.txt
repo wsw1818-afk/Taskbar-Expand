@@ -1,1 +1,1 @@
-🐛 가로 모드 AppBar 위치 - ABM_SETPOS 결과값 사용 + winTaskbarHeight 보정
+🐛 자동숨김→고정 전환 시 workArea를 미리 저장하여 정확한 위치 계산
