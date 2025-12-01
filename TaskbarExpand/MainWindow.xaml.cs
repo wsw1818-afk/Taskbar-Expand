@@ -141,11 +141,13 @@ namespace TaskbarExpand
                 _lastHorizontalHeight = horizontalHeight;
 
                 // Windows 작업표시줄의 실제 Top 위치를 직접 찾아서 사용
-                // 이렇게 하면 workArea 변동과 관계없이 항상 정확한 위치에 배치됨
                 int winTaskbarTop = GetWindowsTaskbarTop(bounds);
 
                 int targetTop = winTaskbarTop - horizontalHeight;
                 int targetBottom = winTaskbarTop;
+
+                // 디버그 로그
+                System.Diagnostics.Debug.WriteLine($"[SetAppBarPos] winTaskbarTop={winTaskbarTop}, horizontalHeight={horizontalHeight}, targetTop={targetTop}");
 
                 abd = new NativeMethods.APPBARDATA
                 {
@@ -163,15 +165,32 @@ namespace TaskbarExpand
 
                 // 위치 쿼리 및 설정
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
+
+                // ABM_QUERYPOS 후 시스템이 변경한 값 확인
+                System.Diagnostics.Debug.WriteLine($"[SetAppBarPos] After QUERYPOS: top={abd.rc.top}, bottom={abd.rc.bottom}");
+
+                // 우리가 원하는 값으로 강제 복원
                 abd.rc.top = targetTop;
                 abd.rc.bottom = targetBottom;
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
+
+                System.Diagnostics.Debug.WriteLine($"[SetAppBarPos] After SETPOS: top={abd.rc.top}, bottom={abd.rc.bottom}");
 
                 // 창 위치/크기 적용 - 계산한 값 강제 적용
                 Width = bounds.Width;
                 Height = horizontalHeight;
                 Left = bounds.Left;
                 Top = targetTop;
+
+                // 비동기로 위치 재확인 및 강제 적용 (시스템이 위치를 변경할 수 있으므로)
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+                {
+                    if (_isHorizontalMode && _isAppBarRegistered && Top != targetTop)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[SetAppBarPos] Correcting Top from {Top} to {targetTop}");
+                        Top = targetTop;
+                    }
+                });
             }
             else
             {
