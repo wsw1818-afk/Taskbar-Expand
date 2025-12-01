@@ -625,23 +625,26 @@ namespace TaskbarExpand
                     }
                     else
                     {
-                        // 숨김 상태: 3px만 보이게
+                        // 숨김 상태: 창을 화면 아래로 숨기고 3px만 보이게
                         Top = workArea.Bottom - 3;
+                        Height = 3;
                     }
                 }
                 else
                 {
-                    Width = APPBAR_WIDTH;
-                    Height = workArea.Height;
-                    Top = workArea.Top;
-
                     if (visible)
                     {
+                        Width = APPBAR_WIDTH;
+                        Height = workArea.Height;
+                        Top = workArea.Top;
                         Left = workArea.Right - APPBAR_WIDTH;
                     }
                     else
                     {
-                        // 숨김 상태: 3px만 보이게
+                        // 숨김 상태: 창을 화면 오른쪽으로 숨기고 3px만 보이게
+                        Width = 3;
+                        Height = workArea.Height;
+                        Top = workArea.Top;
                         Left = workArea.Right - 3;
                     }
                 }
