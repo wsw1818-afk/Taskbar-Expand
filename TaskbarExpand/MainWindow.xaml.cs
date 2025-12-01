@@ -466,10 +466,8 @@ namespace TaskbarExpand
                 _hideDelayTimer?.Stop();
                 _isHidden = false;
 
-                // 창 크기를 먼저 원래대로 복원
-                SetAutoHidePosition(true);
-
-                // AppBar 등록
+                // AppBar 등록 (SetAppBarPos가 정확한 위치 설정)
+                // SetAutoHidePosition 호출 제거 - RegisterAppBar가 직접 위치 설정
                 RegisterAppBar();
             }
         }
