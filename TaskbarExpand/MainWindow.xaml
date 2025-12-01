@@ -103,30 +103,43 @@
 
         <!-- 가로 모드용 아이템 템플릿 -->
         <DataTemplate x:Key="HorizontalItemTemplate">
-            <StackPanel x:Name="ItemPanel" Orientation="Horizontal" ToolTip="{Binding Title}">
-                <Image Source="{Binding Icon}"
-                       Width="20" Height="20"
-                       Margin="0,0,6,0"
-                       VerticalAlignment="Center"
-                       RenderOptions.BitmapScalingMode="HighQuality">
-                    <Image.Style>
-                        <Style TargetType="Image">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Image.Style>
-                </Image>
-                <TextBlock Text="{Binding Title}"
-                           MaxWidth="140"
-                           TextTrimming="CharacterEllipsis"
+            <Border x:Name="ItemBorder"
+                    Background="Transparent"
+                    CornerRadius="4"
+                    Padding="10,6"
+                    Cursor="Hand"
+                    MouseLeftButtonUp="HorizontalItem_MouseLeftButtonUp"
+                    ToolTip="{Binding Title}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="{Binding Icon}"
+                           Width="20" Height="20"
+                           Margin="0,0,6,0"
                            VerticalAlignment="Center"
-                           FontSize="12"
-                           FontFamily="Segoe UI"
-                           Foreground="White"/>
-            </StackPanel>
+                           RenderOptions.BitmapScalingMode="HighQuality">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <TextBlock Text="{Binding Title}"
+                               MaxWidth="140"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               FontFamily="Segoe UI"
+                               Foreground="White"/>
+                </StackPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <Trigger SourceName="ItemBorder" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="ItemBorder" Property="Background" Value="#40FFFFFF"/>
+                </Trigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
 
         <!-- 가로 모드용 패널 -->
@@ -412,22 +425,23 @@
                 </StackPanel>
 
                 <!-- 가로 모드 윈도우 리스트 -->
-                <ListBox x:Name="HorizontalWindowListBox"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                         ScrollViewer.CanContentScroll="False"
-                         ItemContainerStyle="{StaticResource HorizontalWindowListItemStyle}"
-                         ItemTemplate="{StaticResource HorizontalItemTemplate}"
-                         ItemsPanel="{StaticResource HorizontalItemsPanel}"
-                         SelectionChanged="HorizontalWindowListBox_SelectionChanged"
-                         Margin="8,2,0,2"
-                         VerticalAlignment="Stretch"
-                         AllowDrop="True"
-                         PreviewMouseMove="ListBox_PreviewMouseMove"
-                         Drop="ListBox_Drop"
-                         DragOver="ListBox_DragOver"/>
+                <ItemsControl x:Name="HorizontalWindowListBox"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              ItemTemplate="{StaticResource HorizontalItemTemplate}"
+                              Margin="8,2,0,2"
+                              VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Margin" Value="2"/>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                </ItemsControl>
             </DockPanel>
         </Border>
     </Grid>

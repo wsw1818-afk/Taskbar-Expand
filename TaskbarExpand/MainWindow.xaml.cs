@@ -280,12 +280,15 @@ namespace TaskbarExpand
             Dispatcher.BeginInvoke(() => { WindowListBox.SelectedItem = null; _isActivating = false; }, DispatcherPriority.Background);
         }
 
-        private void HorizontalWindowListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void HorizontalItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_isActivating || HorizontalWindowListBox.SelectedItem is not WindowInfo w) return;
-            _isActivating = true;
-            ToggleWindow(w.Handle);
-            Dispatcher.BeginInvoke(() => { HorizontalWindowListBox.SelectedItem = null; _isActivating = false; }, DispatcherPriority.Background);
+            if (_isActivating) return;
+            if (sender is FrameworkElement { DataContext: WindowInfo w })
+            {
+                _isActivating = true;
+                ToggleWindow(w.Handle);
+                Dispatcher.BeginInvoke(() => _isActivating = false, DispatcherPriority.Background);
+            }
         }
 
         private void ToggleWindow(IntPtr hwnd)
