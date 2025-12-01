@@ -1,1 +1,1 @@
-🐛 가로 모드 AppBar 위치 - Windows 작업표시줄(Shell_TrayWnd) 실제 위치 직접 찾아서 배치
+🐛 가로 모드 AppBar 위치 - 자동숨김→고정 전환 시 100ms 지연 후 위치 재설정

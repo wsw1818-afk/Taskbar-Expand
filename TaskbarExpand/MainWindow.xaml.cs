@@ -146,9 +146,6 @@ namespace TaskbarExpand
                 int targetTop = winTaskbarTop - horizontalHeight;
                 int targetBottom = winTaskbarTop;
 
-                // 디버그 로그
-                System.Diagnostics.Debug.WriteLine($"[SetAppBarPos] winTaskbarTop={winTaskbarTop}, horizontalHeight={horizontalHeight}, targetTop={targetTop}");
-
                 abd = new NativeMethods.APPBARDATA
                 {
                     cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
@@ -163,34 +160,36 @@ namespace TaskbarExpand
                     }
                 };
 
-                // 위치 쿼리 및 설정
+                // 위치 쿼리 및 설정 - 시스템에 알림만 하고 결과는 무시
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
-
-                // ABM_QUERYPOS 후 시스템이 변경한 값 확인
-                System.Diagnostics.Debug.WriteLine($"[SetAppBarPos] After QUERYPOS: top={abd.rc.top}, bottom={abd.rc.bottom}");
-
-                // 우리가 원하는 값으로 강제 복원
                 abd.rc.top = targetTop;
                 abd.rc.bottom = targetBottom;
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
 
-                System.Diagnostics.Debug.WriteLine($"[SetAppBarPos] After SETPOS: top={abd.rc.top}, bottom={abd.rc.bottom}");
-
-                // 창 위치/크기 적용 - 계산한 값 강제 적용
+                // 창 위치/크기 적용 - 항상 Windows 작업표시줄 바로 위에 강제 배치
                 Width = bounds.Width;
                 Height = horizontalHeight;
                 Left = bounds.Left;
                 Top = targetTop;
 
-                // 비동기로 위치 재확인 및 강제 적용 (시스템이 위치를 변경할 수 있으므로)
-                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+                // 여러 타이밍에 위치 재확인 (시스템이 비동기로 위치 변경 가능)
+                int capturedTargetTop = targetTop;
+                Action forcePosition = () =>
                 {
-                    if (_isHorizontalMode && _isAppBarRegistered && Top != targetTop)
+                    if (_isHorizontalMode && _isAppBarRegistered)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[SetAppBarPos] Correcting Top from {Top} to {targetTop}");
-                        Top = targetTop;
+                        int currentWinTaskbarTop = GetWindowsTaskbarTop(bounds);
+                        int correctTop = currentWinTaskbarTop - horizontalHeight;
+                        if (Math.Abs(Top - correctTop) > 2)
+                        {
+                            Top = correctTop;
+                        }
                     }
-                });
+                };
+
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, forcePosition);
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, forcePosition);
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, forcePosition);
             }
             else
             {
@@ -529,8 +528,24 @@ namespace TaskbarExpand
                 _hideDelayTimer?.Stop();
                 _isHidden = false;
 
-                // AppBar 등록 (Windows 작업표시줄 위치를 직접 찾으므로 workArea 저장 불필요)
+                // AppBar 등록
                 RegisterAppBar();
+
+                // 시스템이 workArea를 업데이트하는 데 시간이 걸리므로,
+                // 약간의 지연 후 위치를 다시 설정하여 정확한 위치 확보
+                if (_isHorizontalMode)
+                {
+                    var positionCorrectionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+                    positionCorrectionTimer.Tick += (_, _) =>
+                    {
+                        positionCorrectionTimer.Stop();
+                        if (_isAppBarRegistered && _isHorizontalMode && !_isAutoHideEnabled)
+                        {
+                            SetAppBarPos();
+                        }
+                    };
+                    positionCorrectionTimer.Start();
+                }
             }
         }
 
