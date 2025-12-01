@@ -1,1 +1,1 @@
-🐛 가로 모드 위치 계산 - Bounds 기준으로 Windows 작업표시줄 높이 계산 후 배치
+🐛 가로 모드 AppBar 위치 - ABM_SETPOS 결과값 사용 + winTaskbarHeight 보정

@@ -134,7 +134,17 @@ namespace TaskbarExpand
             var workArea = screen.WorkingArea;
 
             // Windows 작업표시줄 높이 계산 (Bounds와 WorkingArea 차이)
+            // 주의: 자동숨김에서 고정으로 전환 시, workArea에 이미 TaskbarExpand가 포함되어 있을 수 있음
             int winTaskbarHeight = bounds.Bottom - workArea.Bottom;
+
+            // 만약 winTaskbarHeight가 너무 크면 (TaskbarExpand 높이가 포함된 경우)
+            // Windows 작업표시줄은 보통 48px 정도이므로, 그 이상이면 조정
+            if (winTaskbarHeight > 60)
+            {
+                // 현재 TaskbarExpand 높이를 제외
+                winTaskbarHeight = winTaskbarHeight - (int)Height;
+                if (winTaskbarHeight < 0) winTaskbarHeight = 48; // 기본값
+            }
 
             NativeMethods.APPBARDATA abd;
 
@@ -144,7 +154,7 @@ namespace TaskbarExpand
                 int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
                 _lastHorizontalHeight = horizontalHeight;
 
-                // Windows 작업표시줄 바로 위 = bounds.Bottom - winTaskbarHeight - horizontalHeight
+                // Windows 작업표시줄 바로 위
                 int targetTop = bounds.Bottom - winTaskbarHeight - horizontalHeight;
                 int targetBottom = bounds.Bottom - winTaskbarHeight;
 
@@ -162,16 +172,22 @@ namespace TaskbarExpand
                     }
                 };
 
-                // 위치 쿼리 및 설정
+                // 위치 쿼리 - 시스템이 bottom을 조정할 수 있음
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
-                abd.rc.top = abd.rc.bottom - horizontalHeight;
+
+                // 시스템이 조정한 bottom 값 기준으로 top 재계산
+                int adjustedBottom = abd.rc.bottom;
+                int adjustedTop = adjustedBottom - horizontalHeight;
+                abd.rc.top = adjustedTop;
+
+                // 위치 설정
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
 
-                // 창 위치/크기 적용 - 직접 계산한 값 사용
-                Width = bounds.Width;
-                Height = horizontalHeight;
-                Left = bounds.Left;
-                Top = targetTop;
+                // 창 위치/크기 적용 - ABM_SETPOS 결과 사용
+                Width = abd.rc.right - abd.rc.left;
+                Height = abd.rc.bottom - abd.rc.top;
+                Left = abd.rc.left;
+                Top = abd.rc.top;
             }
             else
             {
