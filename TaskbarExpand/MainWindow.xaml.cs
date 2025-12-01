@@ -129,23 +129,14 @@ namespace TaskbarExpand
             var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
             if (screen == null) return;
 
-            // Bounds와 WorkingArea를 비교하여 Windows 작업표시줄 크기 계산
-            var bounds = screen.Bounds;
             var workArea = screen.WorkingArea;
-            int windowsTaskbarHeight = bounds.Bottom - workArea.Bottom; // Windows 작업표시줄 높이
-            int windowsTaskbarWidth = bounds.Right - workArea.Right;    // Windows 작업표시줄 너비 (세로일 때)
-
             NativeMethods.APPBARDATA abd;
 
             if (_isHorizontalMode)
             {
-                // 가로 모드: 하단에 배치 (Windows 작업표시줄 바로 위)
-                int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
+                // 가로 모드: 하단에 배치 (WorkingArea 하단)
+                int horizontalHeight = CalculateHorizontalHeight(workArea.Width);
                 _lastHorizontalHeight = horizontalHeight;
-
-                // Windows 작업표시줄 위에 배치
-                int bottom = bounds.Bottom - windowsTaskbarHeight;
-                int top = bottom - horizontalHeight;
 
                 abd = new NativeMethods.APPBARDATA
                 {
@@ -154,12 +145,26 @@ namespace TaskbarExpand
                     uEdge = NativeMethods.ABE_BOTTOM,
                     rc = new NativeMethods.RECT
                     {
-                        left = bounds.Left,
-                        top = top,
-                        right = bounds.Right,
-                        bottom = bottom
+                        left = workArea.Left,
+                        top = workArea.Bottom - horizontalHeight,
+                        right = workArea.Right,
+                        bottom = workArea.Bottom
                     }
                 };
+
+                // 위치 쿼리 및 설정
+                NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
+
+                // QUERYPOS 후 top 값 재조정 (시스템이 bottom을 조정할 수 있음)
+                abd.rc.top = abd.rc.bottom - horizontalHeight;
+
+                NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
+
+                // 창 위치/크기 적용 - 우리가 계산한 값 사용
+                Width = workArea.Width;
+                Height = horizontalHeight;
+                Left = workArea.Left;
+                Top = workArea.Bottom - horizontalHeight;
             }
             else
             {
@@ -177,19 +182,19 @@ namespace TaskbarExpand
                         bottom = workArea.Bottom
                     }
                 };
+
+                // 위치 쿼리
+                NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
+
+                // 위치 설정
+                NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
+
+                // 창 위치/크기 적용
+                Width = abd.rc.right - abd.rc.left;
+                Height = abd.rc.bottom - abd.rc.top;
+                Left = abd.rc.left;
+                Top = abd.rc.top;
             }
-
-            // 위치 쿼리
-            NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
-
-            // 위치 설정
-            NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
-
-            // 창 위치/크기 적용
-            Width = abd.rc.right - abd.rc.left;
-            Height = abd.rc.bottom - abd.rc.top;
-            Left = abd.rc.left;
-            Top = abd.rc.top;
         }
 
         private int CalculateHorizontalHeight(int screenWidth = 0)
