@@ -129,14 +129,23 @@ namespace TaskbarExpand
             var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
             if (screen == null) return;
 
+            // Bounds와 WorkingArea를 비교하여 Windows 작업표시줄 크기 계산
+            var bounds = screen.Bounds;
             var workArea = screen.WorkingArea;
+            int windowsTaskbarHeight = bounds.Bottom - workArea.Bottom; // Windows 작업표시줄 높이
+            int windowsTaskbarWidth = bounds.Right - workArea.Right;    // Windows 작업표시줄 너비 (세로일 때)
+
             NativeMethods.APPBARDATA abd;
 
             if (_isHorizontalMode)
             {
-                // 가로 모드: 하단에 배치 (WorkingArea 사용)
-                int horizontalHeight = CalculateHorizontalHeight(workArea.Width);
+                // 가로 모드: 하단에 배치 (Windows 작업표시줄 바로 위)
+                int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
                 _lastHorizontalHeight = horizontalHeight;
+
+                // Windows 작업표시줄 위에 배치
+                int bottom = bounds.Bottom - windowsTaskbarHeight;
+                int top = bottom - horizontalHeight;
 
                 abd = new NativeMethods.APPBARDATA
                 {
@@ -145,10 +154,10 @@ namespace TaskbarExpand
                     uEdge = NativeMethods.ABE_BOTTOM,
                     rc = new NativeMethods.RECT
                     {
-                        left = workArea.Left,
-                        top = workArea.Bottom - horizontalHeight,
-                        right = workArea.Right,
-                        bottom = workArea.Bottom
+                        left = bounds.Left,
+                        top = top,
+                        right = bounds.Right,
+                        bottom = bottom
                     }
                 };
             }
