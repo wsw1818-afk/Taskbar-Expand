@@ -136,11 +136,11 @@ namespace TaskbarExpand
 
             if (_isHorizontalMode)
             {
-                // 가로 모드: WorkingArea 하단에 배치 (다른 창들이 피하도록 ABM_SETPOS 결과 반영)
+                // 가로 모드: 화면 하단에 배치 (Windows 작업표시줄 바로 위)
                 int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
                 _lastHorizontalHeight = horizontalHeight;
 
-                // WorkingArea 기준으로 계산 (AppBar가 차지할 영역)
+                // bounds.Bottom 기준으로 요청 (시스템이 Windows 작업표시줄 위로 조정해줌)
                 abd = new NativeMethods.APPBARDATA
                 {
                     cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
@@ -149,16 +149,16 @@ namespace TaskbarExpand
                     rc = new NativeMethods.RECT
                     {
                         left = bounds.Left,
-                        top = workArea.Bottom - horizontalHeight,
+                        top = bounds.Bottom - horizontalHeight,
                         right = bounds.Right,
-                        bottom = workArea.Bottom
+                        bottom = bounds.Bottom
                     }
                 };
 
-                // 위치 쿼리
+                // 위치 쿼리 - 시스템이 사용 가능한 영역으로 조정
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
 
-                // 높이 재조정 (시스템이 조정한 값 반영)
+                // 높이 재조정 (시스템이 조정한 bottom 기준)
                 abd.rc.top = abd.rc.bottom - horizontalHeight;
 
                 // 위치 설정 - 시스템에 이 영역을 예약

@@ -1,1 +1,1 @@
-🐛 ContextMenu 바인딩 수정 - PlacementTarget.DataContext로 바인딩 및 null 체크 강화
+🐛 듀얼 모니터 AppBar 위치 수정 - bounds.Bottom 기준으로 변경하여 빈 공간 제거
