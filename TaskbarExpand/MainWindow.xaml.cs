@@ -415,6 +415,12 @@ namespace TaskbarExpand
             e.Handled = true;
         }
 
+        private void ContextMenu_CloseWindow_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem { Tag: IntPtr hwnd })
+                NativeMethods.PostMessage(hwnd, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+        }
+
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

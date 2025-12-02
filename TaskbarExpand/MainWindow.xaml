@@ -110,6 +110,12 @@
                     Cursor="Hand"
                     MouseLeftButtonUp="HorizontalItem_MouseLeftButtonUp"
                     ToolTip="{Binding Title}">
+                <!-- 컨텍스트 메뉴 -->
+                <Border.ContextMenu>
+                    <ContextMenu Style="{StaticResource WindowContextMenuStyle}">
+                        <MenuItem Header="창 닫기" Click="ContextMenu_CloseWindow_Click" Tag="{Binding Handle}" Style="{StaticResource ContextMenuItemStyle}"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
                 <StackPanel Orientation="Horizontal">
                     <Image Source="{Binding Icon}"
                            Width="20" Height="20"
@@ -196,6 +202,50 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ButtonBorder" Property="Background" Value="#E81123"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 컨텍스트 메뉴 스타일 (Windows 11) -->
+        <Style x:Key="WindowContextMenuStyle" TargetType="ContextMenu">
+            <Setter Property="Background" Value="#E8202020"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#40FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <StackPanel IsItemsHost="True"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ContextMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="MenuBorder"
+                                Background="Transparent"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MenuBorder" Property="Background" Value="#40FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -314,6 +364,13 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
+
+                                <!-- 컨텍스트 메뉴 -->
+                                <Grid.ContextMenu>
+                                    <ContextMenu Style="{StaticResource WindowContextMenuStyle}">
+                                        <MenuItem Header="창 닫기" Click="ContextMenu_CloseWindow_Click" Tag="{Binding Handle}" Style="{StaticResource ContextMenuItemStyle}"/>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
 
                                 <!-- 아이콘 -->
                                 <Image Grid.Column="0"
