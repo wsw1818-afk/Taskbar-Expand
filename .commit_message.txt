@@ -1,1 +1,1 @@
-🐛 확장 모니터 AppBar 수정 - WorkingArea 기준 계산 및 ABM_SETPOS 결과 반영으로 다른 창 최대화 시 영역 피하기
+🐛 ContextMenu 바인딩 수정 - PlacementTarget.DataContext로 바인딩 및 null 체크 강화

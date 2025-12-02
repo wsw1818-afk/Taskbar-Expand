@@ -396,8 +396,14 @@ namespace TaskbarExpand
 
         private void ContextMenu_CloseWindow_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is MenuItem { Tag: IntPtr hwnd })
-                NativeMethods.PostMessage(hwnd, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            try
+            {
+                if (sender is MenuItem menuItem && menuItem.Tag is IntPtr hwnd && hwnd != IntPtr.Zero)
+                {
+                    NativeMethods.PostMessage(hwnd, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                }
+            }
+            catch { }
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();

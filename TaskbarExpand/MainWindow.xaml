@@ -112,7 +112,8 @@
                     ToolTip="{Binding Title}">
                 <!-- 컨텍스트 메뉴 -->
                 <Border.ContextMenu>
-                    <ContextMenu Style="{StaticResource WindowContextMenuStyle}">
+                    <ContextMenu Style="{StaticResource WindowContextMenuStyle}"
+                                 DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                         <MenuItem Header="창 닫기" Click="ContextMenu_CloseWindow_Click" Tag="{Binding Handle}" Style="{StaticResource ContextMenuItemStyle}"/>
                     </ContextMenu>
                 </Border.ContextMenu>
@@ -367,7 +368,8 @@
 
                                 <!-- 컨텍스트 메뉴 -->
                                 <Grid.ContextMenu>
-                                    <ContextMenu Style="{StaticResource WindowContextMenuStyle}">
+                                    <ContextMenu Style="{StaticResource WindowContextMenuStyle}"
+                                                 DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="창 닫기" Click="ContextMenu_CloseWindow_Click" Tag="{Binding Handle}" Style="{StaticResource ContextMenuItemStyle}"/>
                                     </ContextMenu>
                                 </Grid.ContextMenu>
