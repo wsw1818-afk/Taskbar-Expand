@@ -92,113 +92,125 @@ namespace TaskbarExpand
         #region AppBar
         private void RegisterAppBar()
         {
-            if (_isAppBarRegistered) return;
-
-            var abd = new NativeMethods.APPBARDATA
+            try
             {
-                cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
-                hWnd = _hwnd
-            };
+                if (_isAppBarRegistered) return;
 
-            // AppBar 등록
-            if (NativeMethods.SHAppBarMessage(NativeMethods.ABM_NEW, ref abd) != 0)
-            {
-                _isAppBarRegistered = true;
-                SetAppBarPos();
+                var abd = new NativeMethods.APPBARDATA
+                {
+                    cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                    hWnd = _hwnd
+                };
+
+                // AppBar 등록
+                if (NativeMethods.SHAppBarMessage(NativeMethods.ABM_NEW, ref abd) != 0)
+                {
+                    _isAppBarRegistered = true;
+                    SetAppBarPos();
+                }
             }
+            catch { }
         }
 
         private void UnregisterAppBar()
         {
-            if (!_isAppBarRegistered) return;
-
-            var abd = new NativeMethods.APPBARDATA
+            try
             {
-                cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
-                hWnd = _hwnd
-            };
+                if (!_isAppBarRegistered) return;
 
-            NativeMethods.SHAppBarMessage(NativeMethods.ABM_REMOVE, ref abd);
-            _isAppBarRegistered = false;
+                var abd = new NativeMethods.APPBARDATA
+                {
+                    cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                    hWnd = _hwnd
+                };
+
+                NativeMethods.SHAppBarMessage(NativeMethods.ABM_REMOVE, ref abd);
+                _isAppBarRegistered = false;
+            }
+            catch { }
         }
 
         private void SetAppBarPos()
         {
-            if (!_isAppBarRegistered) return;
-
-            var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
-            if (screen == null) return;
-
-            var bounds = screen.Bounds;
-            var workArea = screen.WorkingArea;
-
-            NativeMethods.APPBARDATA abd;
-
-            if (_isHorizontalMode)
+            try
             {
-                // 가로 모드: 화면 하단에 배치 (Windows 작업표시줄 바로 위)
-                int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
-                _lastHorizontalHeight = horizontalHeight;
+                if (!_isAppBarRegistered) return;
 
-                // bounds.Bottom 기준으로 요청 (시스템이 Windows 작업표시줄 위로 조정해줌)
-                abd = new NativeMethods.APPBARDATA
+                var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
+                if (screen == null) return;
+
+                var bounds = screen.Bounds;
+                var workArea = screen.WorkingArea;
+
+                NativeMethods.APPBARDATA abd;
+
+                if (_isHorizontalMode)
                 {
-                    cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
-                    hWnd = _hwnd,
-                    uEdge = NativeMethods.ABE_BOTTOM,
-                    rc = new NativeMethods.RECT
+                    // 가로 모드: 화면 하단에 배치 (Windows 작업표시줄 바로 위)
+                    int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
+                    _lastHorizontalHeight = horizontalHeight;
+
+                    // bounds.Bottom 기준으로 요청 (시스템이 Windows 작업표시줄 위로 조정해줌)
+                    abd = new NativeMethods.APPBARDATA
                     {
-                        left = bounds.Left,
-                        top = bounds.Bottom - horizontalHeight,
-                        right = bounds.Right,
-                        bottom = bounds.Bottom
-                    }
-                };
+                        cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                        hWnd = _hwnd,
+                        uEdge = NativeMethods.ABE_BOTTOM,
+                        rc = new NativeMethods.RECT
+                        {
+                            left = bounds.Left,
+                            top = bounds.Bottom - horizontalHeight,
+                            right = bounds.Right,
+                            bottom = bounds.Bottom
+                        }
+                    };
 
-                // 위치 쿼리 - 시스템이 사용 가능한 영역으로 조정
-                NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
+                    // 위치 쿼리 - 시스템이 사용 가능한 영역으로 조정
+                    NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
 
-                // 높이 재조정 (시스템이 조정한 bottom 기준)
-                abd.rc.top = abd.rc.bottom - horizontalHeight;
+                    // 높이 재조정 (시스템이 조정한 bottom 기준)
+                    abd.rc.top = abd.rc.bottom - horizontalHeight;
 
-                // 위치 설정 - 시스템에 이 영역을 예약
-                NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
+                    // 위치 설정 - 시스템에 이 영역을 예약
+                    NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
 
-                // 창 위치/크기 적용 - 시스템이 설정한 영역 사용
-                Width = abd.rc.right - abd.rc.left;
-                Height = abd.rc.bottom - abd.rc.top;
-                Left = abd.rc.left;
-                Top = abd.rc.top;
-            }
-            else
-            {
-                // 세로 모드: 오른쪽에 배치 (WorkingArea 사용)
-                abd = new NativeMethods.APPBARDATA
+                    // 창 위치/크기 적용 - 시스템이 설정한 영역 사용
+                    Width = abd.rc.right - abd.rc.left;
+                    Height = abd.rc.bottom - abd.rc.top;
+                    Left = abd.rc.left;
+                    Top = abd.rc.top;
+                }
+                else
                 {
-                    cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
-                    hWnd = _hwnd,
-                    uEdge = NativeMethods.ABE_RIGHT,
-                    rc = new NativeMethods.RECT
+                    // 세로 모드: 오른쪽에 배치 (WorkingArea 사용)
+                    abd = new NativeMethods.APPBARDATA
                     {
-                        left = workArea.Right - APPBAR_WIDTH,
-                        top = workArea.Top,
-                        right = workArea.Right,
-                        bottom = workArea.Bottom
-                    }
-                };
+                        cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
+                        hWnd = _hwnd,
+                        uEdge = NativeMethods.ABE_RIGHT,
+                        rc = new NativeMethods.RECT
+                        {
+                            left = workArea.Right - APPBAR_WIDTH,
+                            top = workArea.Top,
+                            right = workArea.Right,
+                            bottom = workArea.Bottom
+                        }
+                    };
 
-                // 위치 쿼리
-                NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
+                    // 위치 쿼리
+                    NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
 
-                // 위치 설정
-                NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
+                    // 위치 설정
+                    NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
 
-                // 창 위치/크기 적용
-                Width = abd.rc.right - abd.rc.left;
-                Height = abd.rc.bottom - abd.rc.top;
-                Left = abd.rc.left;
-                Top = abd.rc.top;
+                    // 창 위치/크기 적용
+                    Width = abd.rc.right - abd.rc.left;
+                    Height = abd.rc.bottom - abd.rc.top;
+                    Left = abd.rc.left;
+                    Top = abd.rc.top;
+                }
             }
+            catch { }
         }
 
         private int CalculateHorizontalHeight(int screenWidth = 0)
@@ -501,36 +513,40 @@ namespace TaskbarExpand
 
         private void ApplyMode()
         {
-            // 먼저 AppBar 해제 (edge 변경을 위해)
-            UnregisterAppBar();
-            _hideDelayTimer?.Stop();
+            try
+            {
+                // 먼저 AppBar 해제 (edge 변경을 위해)
+                UnregisterAppBar();
+                _hideDelayTimer?.Stop();
 
-            // 숨김 상태 초기화
-            _isHidden = false;
-            _lastHorizontalHeight = 0;
+                // 숨김 상태 초기화
+                _isHidden = false;
+                _lastHorizontalHeight = 0;
 
-            if (_isHorizontalMode)
-            {
-                VerticalModeContainer.Visibility = Visibility.Collapsed;
-                HorizontalModeContainer.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                VerticalModeContainer.Visibility = Visibility.Visible;
-                HorizontalModeContainer.Visibility = Visibility.Collapsed;
-                ToggleModeButton.Content = "⇄";
-            }
+                if (_isHorizontalMode)
+                {
+                    VerticalModeContainer.Visibility = Visibility.Collapsed;
+                    HorizontalModeContainer.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    VerticalModeContainer.Visibility = Visibility.Visible;
+                    HorizontalModeContainer.Visibility = Visibility.Collapsed;
+                    ToggleModeButton.Content = "⇄";
+                }
 
-            // AppBar 재등록 (새 edge로)
-            if (!_isAutoHideEnabled)
-            {
-                RegisterAppBar();
+                // AppBar 재등록 (새 edge로)
+                if (!_isAutoHideEnabled)
+                {
+                    RegisterAppBar();
+                }
+                else
+                {
+                    // 자동 숨김 모드에서는 보이는 상태로 시작
+                    SetAutoHidePosition(true);
+                }
             }
-            else
-            {
-                // 자동 숨김 모드에서는 보이는 상태로 시작
-                SetAutoHidePosition(true);
-            }
+            catch { }
         }
 
         private void ToggleAutoHideButton_Click(object sender, RoutedEventArgs e)

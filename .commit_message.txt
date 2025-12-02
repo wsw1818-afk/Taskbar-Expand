@@ -1,1 +1,1 @@
-🐛 듀얼 모니터 AppBar 위치 수정 - bounds.Bottom 기준으로 변경하여 빈 공간 제거
+🐛 예외 처리 강화 - RegisterAppBar, SetAppBarPos, ApplyMode에 try-catch 추가로 에러 방지
