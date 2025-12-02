@@ -50,42 +50,56 @@ namespace TaskbarExpand
         #region Window Events
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            _hwnd = new WindowInteropHelper(this).Handle;
-
-            var exStyle = NativeMethods.GetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE);
-            NativeMethods.SetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE, exStyle | NativeMethods.WS_EX_NOACTIVATE);
-
-            // 마우스 커서 위치로 현재 모니터 감지
-            var cursorPos = System.Windows.Forms.Cursor.Position;
-            _currentScreen = System.Windows.Forms.Screen.FromPoint(cursorPos);
-
-            // AppBar 등록 (다른 창들이 리사이즈되도록)
-            RegisterAppBar();
-
-            // 타이머 설정 (시작은 지연)
-            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-            _refreshTimer.Tick += (_, _) => RefreshWindowList();
-
-            _autoHideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
-            _autoHideTimer.Tick += AutoHideTimer_Tick;
-
-            _hideDelayTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(AUTO_HIDE_DELAY) };
-            _hideDelayTimer.Tick += HideDelayTimer_Tick;
-
-            // UI 렌더링 완료 후 창 목록 로드 (버벅임 방지)
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+            try
             {
-                RefreshWindowList();
-                _refreshTimer?.Start();
-            });
+                _hwnd = new WindowInteropHelper(this).Handle;
+
+                var exStyle = NativeMethods.GetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE);
+                NativeMethods.SetWindowLong(_hwnd, NativeMethods.GWL_EXSTYLE, exStyle | NativeMethods.WS_EX_NOACTIVATE);
+
+                // 마우스 커서 위치로 현재 모니터 감지
+                var cursorPos = System.Windows.Forms.Cursor.Position;
+                _currentScreen = System.Windows.Forms.Screen.FromPoint(cursorPos) ?? System.Windows.Forms.Screen.PrimaryScreen;
+
+                // AppBar 등록 (다른 창들이 리사이즈되도록)
+                RegisterAppBar();
+
+                // 타이머 설정 (시작은 지연)
+                _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+                _refreshTimer.Tick += (_, _) => SafeRefreshWindowList();
+
+                _autoHideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+                _autoHideTimer.Tick += AutoHideTimer_Tick;
+
+                _hideDelayTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(AUTO_HIDE_DELAY) };
+                _hideDelayTimer.Tick += HideDelayTimer_Tick;
+
+                // UI 렌더링 완료 후 창 목록 로드 (버벅임 방지)
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+                {
+                    SafeRefreshWindowList();
+                    _refreshTimer?.Start();
+                });
+            }
+            catch { }
+        }
+
+        private void SafeRefreshWindowList()
+        {
+            try { RefreshWindowList(); }
+            catch { }
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            _refreshTimer?.Stop();
-            _autoHideTimer?.Stop();
-            _hideDelayTimer?.Stop();
-            UnregisterAppBar();
+            try
+            {
+                _refreshTimer?.Stop();
+                _autoHideTimer?.Stop();
+                _hideDelayTimer?.Stop();
+                UnregisterAppBar();
+            }
+            catch { }
         }
         #endregion
 
@@ -361,48 +375,66 @@ namespace TaskbarExpand
         #region UI Events
         private void WindowListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_isActivating || WindowListBox.SelectedItem is not WindowInfo w) return;
-            _isActivating = true;
-            ToggleWindow(w.Handle);
-            Dispatcher.BeginInvoke(() => { WindowListBox.SelectedItem = null; _isActivating = false; }, DispatcherPriority.Background);
+            try
+            {
+                if (_isActivating || WindowListBox.SelectedItem is not WindowInfo w) return;
+                _isActivating = true;
+                ToggleWindow(w.Handle);
+                Dispatcher.BeginInvoke(() => { WindowListBox.SelectedItem = null; _isActivating = false; }, DispatcherPriority.Background);
+            }
+            catch { _isActivating = false; }
         }
 
         private void HorizontalItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_isActivating) return;
-            if (sender is FrameworkElement { DataContext: WindowInfo w })
+            try
             {
-                _isActivating = true;
-                ToggleWindow(w.Handle);
-                Dispatcher.BeginInvoke(() => _isActivating = false, DispatcherPriority.Background);
+                if (_isActivating) return;
+                if (sender is FrameworkElement { DataContext: WindowInfo w })
+                {
+                    _isActivating = true;
+                    ToggleWindow(w.Handle);
+                    Dispatcher.BeginInvoke(() => _isActivating = false, DispatcherPriority.Background);
+                }
             }
+            catch { _isActivating = false; }
         }
 
         private void ToggleWindow(IntPtr hwnd)
         {
-            if (NativeMethods.IsIconic(hwnd))
+            try
             {
-                NativeMethods.ShowWindow(hwnd, NativeMethods.SW_RESTORE);
-                NativeMethods.SetForegroundWindow(hwnd);
-                _lastActivatedWindow = hwnd;
+                if (hwnd == IntPtr.Zero) return;
+
+                if (NativeMethods.IsIconic(hwnd))
+                {
+                    NativeMethods.ShowWindow(hwnd, NativeMethods.SW_RESTORE);
+                    NativeMethods.SetForegroundWindow(hwnd);
+                    _lastActivatedWindow = hwnd;
+                }
+                else if (_lastActivatedWindow == hwnd)
+                {
+                    NativeMethods.ShowWindow(hwnd, NativeMethods.SW_MINIMIZE);
+                    _lastActivatedWindow = IntPtr.Zero;
+                }
+                else
+                {
+                    NativeMethods.ShowWindow(hwnd, NativeMethods.SW_SHOW);
+                    NativeMethods.SetForegroundWindow(hwnd);
+                    _lastActivatedWindow = hwnd;
+                }
             }
-            else if (_lastActivatedWindow == hwnd)
-            {
-                NativeMethods.ShowWindow(hwnd, NativeMethods.SW_MINIMIZE);
-                _lastActivatedWindow = IntPtr.Zero;
-            }
-            else
-            {
-                NativeMethods.ShowWindow(hwnd, NativeMethods.SW_SHOW);
-                NativeMethods.SetForegroundWindow(hwnd);
-                _lastActivatedWindow = hwnd;
-            }
+            catch { }
         }
 
         private void CloseWindowButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button { Tag: IntPtr hwnd })
-                NativeMethods.PostMessage(hwnd, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            try
+            {
+                if (sender is Button { Tag: IntPtr hwnd } && hwnd != IntPtr.Zero)
+                    NativeMethods.PostMessage(hwnd, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            }
+            catch { }
             e.Handled = true;
         }
 
@@ -422,65 +454,89 @@ namespace TaskbarExpand
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // AppBar 모드에서는 드래그 이동 비활성화
-            if (!_isAppBarRegistered && e.ClickCount == 1)
-                DragMove();
+            try
+            {
+                // AppBar 모드에서는 드래그 이동 비활성화
+                if (!_isAppBarRegistered && e.ClickCount == 1)
+                    DragMove();
+            }
+            catch { }
         }
         #endregion
 
         #region Drag & Drop
         private void ListBox_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton != MouseButtonState.Pressed || _isDragging) return;
-            if (sender is not ListBox lb) return;
-
-            var pos = e.GetPosition(lb);
-            if (Math.Abs(pos.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
-                Math.Abs(pos.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+            try
             {
-                var item = GetListBoxItemAt(lb, pos);
-                if (item?.DataContext is WindowInfo w)
+                if (e.LeftButton != MouseButtonState.Pressed || _isDragging) return;
+                if (sender is not ListBox lb) return;
+
+                var pos = e.GetPosition(lb);
+                if (Math.Abs(pos.X - _dragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(pos.Y - _dragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
                 {
-                    _isDragging = true;
-                    DragDrop.DoDragDrop(lb, w, DragDropEffects.Move);
-                    _isDragging = false;
+                    var item = GetListBoxItemAt(lb, pos);
+                    if (item?.DataContext is WindowInfo w)
+                    {
+                        _isDragging = true;
+                        DragDrop.DoDragDrop(lb, w, DragDropEffects.Move);
+                        _isDragging = false;
+                    }
                 }
             }
+            catch { _isDragging = false; }
         }
 
         private void ListBox_DragOver(object sender, DragEventArgs e)
         {
-            e.Effects = e.Data.GetDataPresent(typeof(WindowInfo)) ? DragDropEffects.Move : DragDropEffects.None;
+            try
+            {
+                e.Effects = e.Data.GetDataPresent(typeof(WindowInfo)) ? DragDropEffects.Move : DragDropEffects.None;
+            }
+            catch { e.Effects = DragDropEffects.None; }
             e.Handled = true;
         }
 
         private void ListBox_Drop(object sender, DragEventArgs e)
         {
-            if (sender is not ListBox lb || e.Data.GetData(typeof(WindowInfo)) is not WindowInfo dropped) return;
+            try
+            {
+                if (sender is not ListBox lb || e.Data.GetData(typeof(WindowInfo)) is not WindowInfo dropped) return;
 
-            var target = GetListBoxItemAt(lb, e.GetPosition(lb))?.DataContext as WindowInfo;
-            int oldIdx = _windows.IndexOf(dropped);
-            int newIdx = target != null ? _windows.IndexOf(target) : _windows.Count - 1;
+                var target = GetListBoxItemAt(lb, e.GetPosition(lb))?.DataContext as WindowInfo;
+                int oldIdx = _windows.IndexOf(dropped);
+                int newIdx = target != null ? _windows.IndexOf(target) : _windows.Count - 1;
 
-            if (oldIdx >= 0 && newIdx >= 0 && oldIdx != newIdx)
-                _windows.Move(oldIdx, newIdx);
+                if (oldIdx >= 0 && newIdx >= 0 && oldIdx != newIdx)
+                    _windows.Move(oldIdx, newIdx);
+            }
+            catch { }
             e.Handled = true;
         }
 
         protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
         {
-            base.OnPreviewMouseLeftButtonDown(e);
-            _dragStartPoint = e.GetPosition(this);
+            try
+            {
+                base.OnPreviewMouseLeftButtonDown(e);
+                _dragStartPoint = e.GetPosition(this);
+            }
+            catch { }
         }
 
         private static ListBoxItem? GetListBoxItemAt(ListBox lb, Point pt)
         {
-            var el = lb.InputHitTest(pt) as DependencyObject;
-            while (el != null)
+            try
             {
-                if (el is ListBoxItem item) return item;
-                el = System.Windows.Media.VisualTreeHelper.GetParent(el);
+                var el = lb.InputHitTest(pt) as DependencyObject;
+                while (el != null)
+                {
+                    if (el is ListBoxItem item) return item;
+                    el = System.Windows.Media.VisualTreeHelper.GetParent(el);
+                }
             }
+            catch { }
             return null;
         }
         #endregion
@@ -488,27 +544,35 @@ namespace TaskbarExpand
         #region Resize
         private void Resize_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // AppBar 모드에서는 리사이즈 비활성화
-            if (_isAppBarRegistered) return;
-
-            if (sender is Rectangle { Name: var name })
+            try
             {
-                int dir = name switch
+                // AppBar 모드에서는 리사이즈 비활성화
+                if (_isAppBarRegistered) return;
+
+                if (sender is Rectangle { Name: var name })
                 {
-                    "ResizeLeft" => 1, "ResizeRight" => 2, "ResizeTop" => 3, "ResizeBottom" => 6,
-                    "ResizeTopLeft" => 4, "ResizeTopRight" => 5, "ResizeBottomLeft" => 7, "ResizeBottomRight" => 8,
-                    _ => 0
-                };
-                if (dir != 0) NativeMethods.SendMessage(_hwnd, 0x112, (IntPtr)(0xF000 + dir), IntPtr.Zero);
+                    int dir = name switch
+                    {
+                        "ResizeLeft" => 1, "ResizeRight" => 2, "ResizeTop" => 3, "ResizeBottom" => 6,
+                        "ResizeTopLeft" => 4, "ResizeTopRight" => 5, "ResizeBottomLeft" => 7, "ResizeBottomRight" => 8,
+                        _ => 0
+                    };
+                    if (dir != 0) NativeMethods.SendMessage(_hwnd, 0x112, (IntPtr)(0xF000 + dir), IntPtr.Zero);
+                }
             }
+            catch { }
         }
         #endregion
 
         #region Mode Toggle
         private void ToggleModeButton_Click(object sender, RoutedEventArgs e)
         {
-            _isHorizontalMode = !_isHorizontalMode;
-            ApplyMode();
+            try
+            {
+                _isHorizontalMode = !_isHorizontalMode;
+                ApplyMode();
+            }
+            catch { }
         }
 
         private void ApplyMode()
@@ -549,176 +613,224 @@ namespace TaskbarExpand
             catch { }
         }
 
+        private DispatcherTimer? _positionCorrectionTimer;
+
         private void ToggleAutoHideButton_Click(object sender, RoutedEventArgs e)
         {
-            _isAutoHideEnabled = !_isAutoHideEnabled;
-            UpdateAutoHideButtonIcon();
-
-            if (_isAutoHideEnabled)
+            try
             {
-                // AppBar 해제하고 자동 숨김 모드로
-                UnregisterAppBar();
-                _isHidden = false;
-                SetAutoHidePosition(true); // 먼저 보이는 상태로 시작
-                _autoHideTimer?.Start();
-            }
-            else
-            {
-                // 자동 숨김 타이머 정지
-                _autoHideTimer?.Stop();
-                _hideDelayTimer?.Stop();
-                _isHidden = false;
+                _isAutoHideEnabled = !_isAutoHideEnabled;
+                UpdateAutoHideButtonIcon();
 
-                // AppBar 등록
-                RegisterAppBar();
-
-                // 시스템이 workArea를 업데이트하는 데 시간이 걸리므로,
-                // 약간의 지연 후 위치를 다시 설정하여 정확한 위치 확보
-                if (_isHorizontalMode)
+                if (_isAutoHideEnabled)
                 {
-                    var positionCorrectionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
-                    positionCorrectionTimer.Tick += (_, _) =>
+                    // AppBar 해제하고 자동 숨김 모드로
+                    UnregisterAppBar();
+                    _isHidden = false;
+                    SetAutoHidePosition(true); // 먼저 보이는 상태로 시작
+                    _autoHideTimer?.Start();
+                }
+                else
+                {
+                    // 자동 숨김 타이머 정지
+                    _autoHideTimer?.Stop();
+                    _hideDelayTimer?.Stop();
+                    _isHidden = false;
+
+                    // AppBar 등록
+                    RegisterAppBar();
+
+                    // 시스템이 workArea를 업데이트하는 데 시간이 걸리므로,
+                    // 약간의 지연 후 위치를 다시 설정하여 정확한 위치 확보
+                    if (_isHorizontalMode)
                     {
-                        positionCorrectionTimer.Stop();
-                        if (_isAppBarRegistered && _isHorizontalMode && !_isAutoHideEnabled)
-                        {
-                            SetAppBarPos();
-                        }
-                    };
-                    positionCorrectionTimer.Start();
+                        // 기존 타이머 정리
+                        _positionCorrectionTimer?.Stop();
+                        _positionCorrectionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+                        _positionCorrectionTimer.Tick += PositionCorrectionTimer_Tick;
+                        _positionCorrectionTimer.Start();
+                    }
                 }
             }
+            catch { }
+        }
+
+        private void PositionCorrectionTimer_Tick(object? sender, EventArgs e)
+        {
+            try
+            {
+                _positionCorrectionTimer?.Stop();
+                if (_isAppBarRegistered && _isHorizontalMode && !_isAutoHideEnabled)
+                {
+                    SetAppBarPos();
+                }
+            }
+            catch { }
         }
 
         private void UpdateAutoHideButtonIcon()
         {
-            string icon = _isAutoHideEnabled ? "📍" : "📌";
-            ToggleAutoHideButton.Content = icon;
-            HorizontalAutoHideButton.Content = icon;
+            try
+            {
+                string icon = _isAutoHideEnabled ? "📍" : "📌";
+                ToggleAutoHideButton.Content = icon;
+                HorizontalAutoHideButton.Content = icon;
+            }
+            catch { }
         }
 
         private void GroupByAppButton_Click(object sender, RoutedEventArgs e)
         {
-            // 같은 프로그램끼리 그룹화 (프로세스 경로 기준)
-            var grouped = _windows
-                .Select((w, i) => new { Window = w, Index = i })
-                .GroupBy(x => x.Window.ProcessPath ?? x.Window.ProcessId.ToString())
-                .SelectMany(g => g.Select(x => x.Window))
-                .ToList();
-
-            // 기존 순서와 다르면 재정렬
-            bool needsReorder = false;
-            for (int i = 0; i < grouped.Count; i++)
+            try
             {
-                if (_windows[i] != grouped[i])
-                {
-                    needsReorder = true;
-                    break;
-                }
-            }
+                if (_windows.Count == 0) return;
 
-            if (needsReorder)
-            {
-                // 컬렉션 재정렬
+                // 같은 프로그램끼리 그룹화 (프로세스 경로 기준)
+                var grouped = _windows
+                    .Select((w, i) => new { Window = w, Index = i })
+                    .GroupBy(x => x.Window.ProcessPath ?? x.Window.ProcessId.ToString())
+                    .SelectMany(g => g.Select(x => x.Window))
+                    .ToList();
+
+                // 기존 순서와 다르면 재정렬
+                bool needsReorder = false;
                 for (int i = 0; i < grouped.Count; i++)
                 {
-                    int currentIndex = _windows.IndexOf(grouped[i]);
-                    if (currentIndex != i)
+                    if (i >= _windows.Count || _windows[i] != grouped[i])
                     {
-                        _windows.Move(currentIndex, i);
+                        needsReorder = true;
+                        break;
+                    }
+                }
+
+                if (needsReorder)
+                {
+                    // 컬렉션 재정렬
+                    for (int i = 0; i < grouped.Count; i++)
+                    {
+                        int currentIndex = _windows.IndexOf(grouped[i]);
+                        if (currentIndex >= 0 && currentIndex != i)
+                        {
+                            _windows.Move(currentIndex, i);
+                        }
                     }
                 }
             }
+            catch { }
         }
         #endregion
 
         #region Auto Hide
         private void AutoHideTimer_Tick(object? sender, EventArgs e)
         {
-            if (!_isAutoHideEnabled) return;
-
-            var cursorPos = System.Windows.Forms.Cursor.Position;
-            var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
-            if (screen == null) return;
-
-            bool isOverWindow = IsMouseOverWindow();
-            bool isAtEdge = IsMouseAtEdge(cursorPos, screen);
-
-            if (_isHidden)
+            try
             {
-                // 숨김 상태: 가장자리에 마우스가 있으면 즉시 표시
-                if (isAtEdge)
+                if (!_isAutoHideEnabled) return;
+
+                var cursorPos = System.Windows.Forms.Cursor.Position;
+                var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
+                if (screen == null) return;
+
+                bool isOverWindow = IsMouseOverWindow();
+                bool isAtEdge = IsMouseAtEdge(cursorPos, screen);
+
+                if (_isHidden)
                 {
-                    _hideDelayTimer?.Stop();
-                    ShowBar();
-                }
-            }
-            else
-            {
-                // 표시 상태: 마우스가 창 위나 가장자리에 있으면 유지
-                if (isOverWindow || isAtEdge)
-                {
-                    _hideDelayTimer?.Stop();
+                    // 숨김 상태: 가장자리에 마우스가 있으면 즉시 표시
+                    if (isAtEdge)
+                    {
+                        _hideDelayTimer?.Stop();
+                        ShowBar();
+                    }
                 }
                 else
                 {
-                    // 마우스가 벗어났으면 지연 후 숨김
-                    if (_hideDelayTimer != null && !_hideDelayTimer.IsEnabled)
+                    // 표시 상태: 마우스가 창 위나 가장자리에 있으면 유지
+                    if (isOverWindow || isAtEdge)
                     {
-                        _hideDelayTimer.Start();
+                        _hideDelayTimer?.Stop();
+                    }
+                    else
+                    {
+                        // 마우스가 벗어났으면 지연 후 숨김
+                        if (_hideDelayTimer != null && !_hideDelayTimer.IsEnabled)
+                        {
+                            _hideDelayTimer.Start();
+                        }
                     }
                 }
             }
+            catch { }
         }
 
         private void HideDelayTimer_Tick(object? sender, EventArgs e)
         {
-            _hideDelayTimer?.Stop();
-            if (_isAutoHideEnabled && !_isHidden && !IsMouseOverWindow())
+            try
             {
-                HideBar();
+                _hideDelayTimer?.Stop();
+                if (_isAutoHideEnabled && !_isHidden && !IsMouseOverWindow())
+                {
+                    HideBar();
+                }
             }
+            catch { }
         }
 
         private bool IsMouseAtEdge(System.Drawing.Point cursorPos, System.Windows.Forms.Screen screen)
         {
-            var workArea = screen.WorkingArea;
+            try
+            {
+                var workArea = screen.WorkingArea;
 
-            if (_isHorizontalMode)
-            {
-                // 가로 모드: 하단 가장자리 감지 (WorkingArea 기준)
-                return cursorPos.Y >= workArea.Bottom - EDGE_DETECTION_SIZE &&
-                       cursorPos.Y <= workArea.Bottom &&
-                       cursorPos.X >= workArea.Left &&
-                       cursorPos.X <= workArea.Right;
+                if (_isHorizontalMode)
+                {
+                    // 가로 모드: 하단 가장자리 감지 (WorkingArea 기준)
+                    return cursorPos.Y >= workArea.Bottom - EDGE_DETECTION_SIZE &&
+                           cursorPos.Y <= workArea.Bottom &&
+                           cursorPos.X >= workArea.Left &&
+                           cursorPos.X <= workArea.Right;
+                }
+                else
+                {
+                    // 세로 모드: 오른쪽 가장자리 감지 (WorkingArea 기준)
+                    return cursorPos.X >= workArea.Right - EDGE_DETECTION_SIZE &&
+                           cursorPos.X <= workArea.Right &&
+                           cursorPos.Y >= workArea.Top &&
+                           cursorPos.Y <= workArea.Bottom;
+                }
             }
-            else
-            {
-                // 세로 모드: 오른쪽 가장자리 감지 (WorkingArea 기준)
-                return cursorPos.X >= workArea.Right - EDGE_DETECTION_SIZE &&
-                       cursorPos.X <= workArea.Right &&
-                       cursorPos.Y >= workArea.Top &&
-                       cursorPos.Y <= workArea.Bottom;
-            }
+            catch { return false; }
         }
 
         private bool IsMouseOverWindow()
         {
-            var cursorPos = System.Windows.Forms.Cursor.Position;
-            return cursorPos.X >= Left && cursorPos.X <= Left + Width &&
-                   cursorPos.Y >= Top && cursorPos.Y <= Top + Height;
+            try
+            {
+                var cursorPos = System.Windows.Forms.Cursor.Position;
+                return cursorPos.X >= Left && cursorPos.X <= Left + Width &&
+                       cursorPos.Y >= Top && cursorPos.Y <= Top + Height;
+            }
+            catch { return false; }
         }
 
         private void ShowBar()
         {
-            _isHidden = false;
-            SetAutoHidePosition(true);
+            try
+            {
+                _isHidden = false;
+                SetAutoHidePosition(true);
+            }
+            catch { }
         }
 
         private void HideBar()
         {
-            _isHidden = true;
-            SetAutoHidePosition(false);
+            try
+            {
+                _isHidden = true;
+                SetAutoHidePosition(false);
+            }
+            catch { }
         }
 
         private void SetAutoHidePosition(bool visible)
