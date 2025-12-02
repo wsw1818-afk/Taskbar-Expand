@@ -841,13 +841,15 @@ namespace TaskbarExpand
         {
             try
             {
-                var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
+                // 현재 마우스 위치로 화면 다시 감지 (듀얼 모니터 대응)
+                var cursorPos = System.Windows.Forms.Cursor.Position;
+                var screen = System.Windows.Forms.Screen.FromPoint(cursorPos) ?? System.Windows.Forms.Screen.PrimaryScreen;
                 if (screen == null) return;
 
-                // WorkingArea: 작업 표시줄 제외한 영역 (가로 모드용)
-                // Bounds: 전체 화면 영역 (세로 모드용 - 듀얼 모니터 대응)
+                _currentScreen = screen; // 현재 화면 업데이트
+
+                // WorkingArea: 작업 표시줄 제외한 영역
                 var workArea = screen.WorkingArea;
-                var bounds = screen.Bounds;
 
                 if (_isHorizontalMode)
                 {
