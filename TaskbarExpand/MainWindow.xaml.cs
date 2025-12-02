@@ -196,7 +196,7 @@ namespace TaskbarExpand
                 }
                 else
                 {
-                    // 세로 모드: 오른쪽에 배치 (WorkingArea 사용)
+                    // 세로 모드: 오른쪽에 배치 (bounds 기준 - 듀얼 모니터 대응)
                     abd = new NativeMethods.APPBARDATA
                     {
                         cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
@@ -204,15 +204,18 @@ namespace TaskbarExpand
                         uEdge = NativeMethods.ABE_RIGHT,
                         rc = new NativeMethods.RECT
                         {
-                            left = workArea.Right - APPBAR_WIDTH,
-                            top = workArea.Top,
-                            right = workArea.Right,
-                            bottom = workArea.Bottom
+                            left = bounds.Right - APPBAR_WIDTH,
+                            top = bounds.Top,
+                            right = bounds.Right,
+                            bottom = bounds.Bottom
                         }
                     };
 
-                    // 위치 쿼리
+                    // 위치 쿼리 - 시스템이 사용 가능한 영역으로 조정
                     NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
+
+                    // 너비 재조정 (시스템이 조정한 right 기준)
+                    abd.rc.left = abd.rc.right - APPBAR_WIDTH;
 
                     // 위치 설정
                     NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
