@@ -796,11 +796,11 @@ namespace TaskbarExpand
                 }
                 else
                 {
-                    // 세로 모드: 오른쪽 가장자리 감지 (Bounds 기준 - 듀얼 모니터 대응)
+                    // 세로 모드: X는 bounds 기준 (듀얼 모니터 대응), Y는 workArea 기준 (작업표시줄 피하기)
                     return cursorPos.X >= bounds.Right - EDGE_DETECTION_SIZE &&
                            cursorPos.X <= bounds.Right &&
-                           cursorPos.Y >= bounds.Top &&
-                           cursorPos.Y <= bounds.Bottom;
+                           cursorPos.Y >= workArea.Top &&
+                           cursorPos.Y <= workArea.Bottom;
                 }
             }
             catch { return false; }
@@ -870,20 +870,20 @@ namespace TaskbarExpand
                 }
                 else
                 {
-                    // 세로 모드: Bounds 기준 (듀얼 모니터에서 정확한 위치)
+                    // 세로 모드: X는 bounds 기준 (듀얼 모니터 대응), 높이는 workArea 기준 (작업표시줄 피하기)
                     if (visible)
                     {
                         Width = APPBAR_WIDTH;
-                        Height = bounds.Height;
-                        Top = bounds.Top;
+                        Height = workArea.Height;
+                        Top = workArea.Top;
                         Left = bounds.Right - APPBAR_WIDTH;
                     }
                     else
                     {
                         // 숨김 상태: 창을 화면 오른쪽으로 숨기고 3px만 보이게
                         Width = 3;
-                        Height = bounds.Height;
-                        Top = bounds.Top;
+                        Height = workArea.Height;
+                        Top = workArea.Top;
                         Left = bounds.Right - 3;
                     }
                 }
