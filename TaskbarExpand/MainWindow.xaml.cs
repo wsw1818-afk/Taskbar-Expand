@@ -153,7 +153,6 @@ namespace TaskbarExpand
                 var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
                 if (screen == null) return;
 
-                var bounds = screen.Bounds;
                 var workArea = screen.WorkingArea;
 
                 NativeMethods.APPBARDATA abd;
@@ -196,7 +195,7 @@ namespace TaskbarExpand
                 }
                 else
                 {
-                    // 세로 모드: 오른쪽에 배치 (bounds 기준 - 듀얼 모니터 대응)
+                    // 세로 모드: 오른쪽에 배치 (workArea 기준 - 작업표시줄과 겹치지 않게)
                     abd = new NativeMethods.APPBARDATA
                     {
                         cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
@@ -204,10 +203,10 @@ namespace TaskbarExpand
                         uEdge = NativeMethods.ABE_RIGHT,
                         rc = new NativeMethods.RECT
                         {
-                            left = bounds.Right - APPBAR_WIDTH,
-                            top = bounds.Top,
-                            right = bounds.Right,
-                            bottom = bounds.Bottom
+                            left = workArea.Right - APPBAR_WIDTH,
+                            top = workArea.Top,
+                            right = workArea.Right,
+                            bottom = workArea.Bottom
                         }
                     };
 
@@ -784,7 +783,6 @@ namespace TaskbarExpand
             try
             {
                 var workArea = screen.WorkingArea;
-                var bounds = screen.Bounds;
 
                 if (_isHorizontalMode)
                 {
