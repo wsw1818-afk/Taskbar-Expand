@@ -796,9 +796,9 @@ namespace TaskbarExpand
                 }
                 else
                 {
-                    // 세로 모드: X는 bounds 기준 (듀얼 모니터 대응), Y는 workArea 기준 (작업표시줄 피하기)
-                    return cursorPos.X >= bounds.Right - EDGE_DETECTION_SIZE &&
-                           cursorPos.X <= bounds.Right &&
+                    // 세로 모드: workArea 기준 (작업표시줄과 겹치지 않게)
+                    return cursorPos.X >= workArea.Right - EDGE_DETECTION_SIZE &&
+                           cursorPos.X <= workArea.Right &&
                            cursorPos.Y >= workArea.Top &&
                            cursorPos.Y <= workArea.Bottom;
                 }
@@ -870,13 +870,13 @@ namespace TaskbarExpand
                 }
                 else
                 {
-                    // 세로 모드: X는 bounds 기준 (듀얼 모니터 대응), 높이는 workArea 기준 (작업표시줄 피하기)
+                    // 세로 모드: workArea 기준 (작업표시줄과 겹치지 않게)
                     if (visible)
                     {
                         Width = APPBAR_WIDTH;
                         Height = workArea.Height;
                         Top = workArea.Top;
-                        Left = bounds.Right - APPBAR_WIDTH;
+                        Left = workArea.Right - APPBAR_WIDTH;
                     }
                     else
                     {
@@ -884,7 +884,7 @@ namespace TaskbarExpand
                         Width = 3;
                         Height = workArea.Height;
                         Top = workArea.Top;
-                        Left = bounds.Right - 3;
+                        Left = workArea.Right - 3;
                     }
                 }
             }
