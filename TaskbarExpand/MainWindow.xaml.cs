@@ -160,11 +160,11 @@ namespace TaskbarExpand
 
                 if (_isHorizontalMode)
                 {
-                    // 가로 모드: 화면 하단에 배치 (Windows 작업표시줄 바로 위)
-                    int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
+                    // 가로 모드: WorkingArea 하단에 배치 (Windows 작업표시줄 바로 위)
+                    int horizontalHeight = CalculateHorizontalHeight(workArea.Width);
                     _lastHorizontalHeight = horizontalHeight;
 
-                    // bounds.Bottom 기준으로 요청 (시스템이 Windows 작업표시줄 위로 조정해줌)
+                    // workArea.Bottom 기준으로 요청 (작업표시줄 위 영역)
                     abd = new NativeMethods.APPBARDATA
                     {
                         cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
@@ -172,10 +172,10 @@ namespace TaskbarExpand
                         uEdge = NativeMethods.ABE_BOTTOM,
                         rc = new NativeMethods.RECT
                         {
-                            left = bounds.Left,
-                            top = bounds.Bottom - horizontalHeight,
-                            right = bounds.Right,
-                            bottom = bounds.Bottom
+                            left = workArea.Left,
+                            top = workArea.Bottom - horizontalHeight,
+                            right = workArea.Right,
+                            bottom = workArea.Bottom
                         }
                     };
 
@@ -784,6 +784,7 @@ namespace TaskbarExpand
             try
             {
                 var workArea = screen.WorkingArea;
+                var bounds = screen.Bounds;
 
                 if (_isHorizontalMode)
                 {
@@ -795,11 +796,11 @@ namespace TaskbarExpand
                 }
                 else
                 {
-                    // 세로 모드: 오른쪽 가장자리 감지 (WorkingArea 기준)
-                    return cursorPos.X >= workArea.Right - EDGE_DETECTION_SIZE &&
-                           cursorPos.X <= workArea.Right &&
-                           cursorPos.Y >= workArea.Top &&
-                           cursorPos.Y <= workArea.Bottom;
+                    // 세로 모드: 오른쪽 가장자리 감지 (Bounds 기준 - 듀얼 모니터 대응)
+                    return cursorPos.X >= bounds.Right - EDGE_DETECTION_SIZE &&
+                           cursorPos.X <= bounds.Right &&
+                           cursorPos.Y >= bounds.Top &&
+                           cursorPos.Y <= bounds.Bottom;
                 }
             }
             catch { return false; }
@@ -843,8 +844,10 @@ namespace TaskbarExpand
                 var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
                 if (screen == null) return;
 
-                // WorkingArea 사용 (작업 표시줄 제외한 영역)
+                // WorkingArea: 작업 표시줄 제외한 영역 (가로 모드용)
+                // Bounds: 전체 화면 영역 (세로 모드용 - 듀얼 모니터 대응)
                 var workArea = screen.WorkingArea;
+                var bounds = screen.Bounds;
 
                 if (_isHorizontalMode)
                 {
@@ -867,20 +870,21 @@ namespace TaskbarExpand
                 }
                 else
                 {
+                    // 세로 모드: Bounds 기준 (듀얼 모니터에서 정확한 위치)
                     if (visible)
                     {
                         Width = APPBAR_WIDTH;
-                        Height = workArea.Height;
-                        Top = workArea.Top;
-                        Left = workArea.Right - APPBAR_WIDTH;
+                        Height = bounds.Height;
+                        Top = bounds.Top;
+                        Left = bounds.Right - APPBAR_WIDTH;
                     }
                     else
                     {
                         // 숨김 상태: 창을 화면 오른쪽으로 숨기고 3px만 보이게
                         Width = 3;
-                        Height = workArea.Height;
-                        Top = workArea.Top;
-                        Left = workArea.Right - 3;
+                        Height = bounds.Height;
+                        Top = bounds.Top;
+                        Left = bounds.Right - 3;
                     }
                 }
             }
