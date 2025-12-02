@@ -237,17 +237,51 @@ namespace TaskbarExpand
         }
 
         /// <summary>
-        /// Windows 작업표시줄(Shell_TrayWnd)의 실제 Top 위치를 찾습니다.
+        /// 해당 모니터의 Windows 작업표시줄 Top 위치를 찾습니다.
+        /// 주 모니터: Shell_TrayWnd, 확장 모니터: Shell_SecondaryTrayWnd
         /// </summary>
         private int GetWindowsTaskbarTop(System.Drawing.Rectangle bounds)
         {
-            // Shell_TrayWnd 클래스 이름으로 Windows 작업표시줄 찾기
+            // 주 모니터의 작업표시줄 (Shell_TrayWnd)
             IntPtr taskbarHwnd = NativeMethods.FindWindow("Shell_TrayWnd", null);
             if (taskbarHwnd != IntPtr.Zero)
             {
                 if (NativeMethods.GetWindowRect(taskbarHwnd, out NativeMethods.RECT rect))
                 {
-                    // 작업표시줄이 하단에 있는 경우 Top 반환
+                    // 작업표시줄이 현재 모니터 범위 내에 있는지 확인
+                    if (rect.left >= bounds.Left && rect.left < bounds.Right &&
+                        rect.top > bounds.Height / 2)
+                    {
+                        return rect.top;
+                    }
+                }
+            }
+
+            // 확장 모니터의 작업표시줄 (Shell_SecondaryTrayWnd) 찾기
+            IntPtr secondaryTaskbar = IntPtr.Zero;
+            NativeMethods.EnumWindows((hwnd, _) =>
+            {
+                var className = new StringBuilder(256);
+                NativeMethods.GetClassName(hwnd, className, className.Capacity);
+                if (className.ToString() == "Shell_SecondaryTrayWnd")
+                {
+                    if (NativeMethods.GetWindowRect(hwnd, out NativeMethods.RECT rect))
+                    {
+                        // 현재 모니터 범위 내에 있는 작업표시줄 찾기
+                        if (rect.left >= bounds.Left && rect.left < bounds.Right)
+                        {
+                            secondaryTaskbar = hwnd;
+                            return false; // 찾았으면 중단
+                        }
+                    }
+                }
+                return true;
+            }, IntPtr.Zero);
+
+            if (secondaryTaskbar != IntPtr.Zero)
+            {
+                if (NativeMethods.GetWindowRect(secondaryTaskbar, out NativeMethods.RECT rect))
+                {
                     if (rect.top > bounds.Height / 2)
                     {
                         return rect.top;
