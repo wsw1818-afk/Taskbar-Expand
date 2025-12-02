@@ -10,7 +10,9 @@
       "Bash(cmd /c copy:*)",
       "Bash(powershell -Command:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File \"H:\\Claude_work\\Taskbar Expand\\screenshot.ps1\")",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
