@@ -136,16 +136,11 @@ namespace TaskbarExpand
 
             if (_isHorizontalMode)
             {
-                // 가로 모드: Windows 작업표시줄 바로 위에 배치
+                // 가로 모드: WorkingArea 하단에 배치 (다른 창들이 피하도록 ABM_SETPOS 결과 반영)
                 int horizontalHeight = CalculateHorizontalHeight(bounds.Width);
                 _lastHorizontalHeight = horizontalHeight;
 
-                // Windows 작업표시줄의 실제 Top 위치를 직접 찾아서 사용
-                int winTaskbarTop = GetWindowsTaskbarTop(bounds);
-
-                int targetTop = winTaskbarTop - horizontalHeight;
-                int targetBottom = winTaskbarTop;
-
+                // WorkingArea 기준으로 계산 (AppBar가 차지할 영역)
                 abd = new NativeMethods.APPBARDATA
                 {
                     cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA)),
@@ -154,42 +149,26 @@ namespace TaskbarExpand
                     rc = new NativeMethods.RECT
                     {
                         left = bounds.Left,
-                        top = targetTop,
+                        top = workArea.Bottom - horizontalHeight,
                         right = bounds.Right,
-                        bottom = targetBottom
+                        bottom = workArea.Bottom
                     }
                 };
 
-                // 위치 쿼리 및 설정 - 시스템에 알림만 하고 결과는 무시
+                // 위치 쿼리
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_QUERYPOS, ref abd);
-                abd.rc.top = targetTop;
-                abd.rc.bottom = targetBottom;
+
+                // 높이 재조정 (시스템이 조정한 값 반영)
+                abd.rc.top = abd.rc.bottom - horizontalHeight;
+
+                // 위치 설정 - 시스템에 이 영역을 예약
                 NativeMethods.SHAppBarMessage(NativeMethods.ABM_SETPOS, ref abd);
 
-                // 창 위치/크기 적용 - 항상 Windows 작업표시줄 바로 위에 강제 배치
-                Width = bounds.Width;
-                Height = horizontalHeight;
-                Left = bounds.Left;
-                Top = targetTop;
-
-                // 여러 타이밍에 위치 재확인 (시스템이 비동기로 위치 변경 가능)
-                int capturedTargetTop = targetTop;
-                Action forcePosition = () =>
-                {
-                    if (_isHorizontalMode && _isAppBarRegistered)
-                    {
-                        int currentWinTaskbarTop = GetWindowsTaskbarTop(bounds);
-                        int correctTop = currentWinTaskbarTop - horizontalHeight;
-                        if (Math.Abs(Top - correctTop) > 2)
-                        {
-                            Top = correctTop;
-                        }
-                    }
-                };
-
-                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, forcePosition);
-                Dispatcher.BeginInvoke(DispatcherPriority.Input, forcePosition);
-                Dispatcher.BeginInvoke(DispatcherPriority.Background, forcePosition);
+                // 창 위치/크기 적용 - 시스템이 설정한 영역 사용
+                Width = abd.rc.right - abd.rc.left;
+                Height = abd.rc.bottom - abd.rc.top;
+                Left = abd.rc.left;
+                Top = abd.rc.top;
             }
             else
             {
