@@ -34,6 +34,7 @@ namespace TaskbarExpand
         private bool _isAutoHideEnabled;
         private bool _isHidden;
         private int _lastHorizontalHeight;
+        private bool _debugShown; // 디버그 메시지 박스 한 번만 표시
 
         private const double HORIZONTAL_ITEM_WIDTH = 100;
         private const int APPBAR_WIDTH = 280;
@@ -157,6 +158,17 @@ namespace TaskbarExpand
 
                 _currentScreen = screen; // 현재 화면 업데이트
                 var workArea = screen.WorkingArea;
+                var bounds = screen.Bounds;
+
+                // 디버그: 실제 값을 메시지 박스로 표시 (한 번만)
+                if (_debugShown == false)
+                {
+                    _debugShown = true;
+                    MessageBox.Show($"Screen: {screen.DeviceName}\n" +
+                        $"Bounds: L={bounds.Left}, T={bounds.Top}, R={bounds.Right}, B={bounds.Bottom}\n" +
+                        $"WorkArea: L={workArea.Left}, T={workArea.Top}, R={workArea.Right}, B={workArea.Bottom}\n" +
+                        $"Mode: {(_isHorizontalMode ? "Horizontal" : "Vertical")}", "Debug Info");
+                }
 
                 NativeMethods.APPBARDATA abd;
 
