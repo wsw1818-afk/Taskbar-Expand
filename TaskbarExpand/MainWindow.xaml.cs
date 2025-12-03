@@ -160,15 +160,8 @@ namespace TaskbarExpand
                 var workArea = screen.WorkingArea;
                 var bounds = screen.Bounds;
 
-                // 디버그: 실제 값을 메시지 박스로 표시 (한 번만)
-                if (_debugShown == false)
-                {
-                    _debugShown = true;
-                    MessageBox.Show($"Screen: {screen.DeviceName}\n" +
-                        $"Bounds: L={bounds.Left}, T={bounds.Top}, R={bounds.Right}, B={bounds.Bottom}\n" +
-                        $"WorkArea: L={workArea.Left}, T={workArea.Top}, R={workArea.Right}, B={workArea.Bottom}\n" +
-                        $"Mode: {(_isHorizontalMode ? "Horizontal" : "Vertical")}", "Debug Info");
-                }
+                // 디버그: 타이틀에 정보 표시 (Bounds.Bottom vs WorkArea.Bottom)
+                Title = $"B:{bounds.Bottom} W:{workArea.Bottom}";
 
                 NativeMethods.APPBARDATA abd;
 
