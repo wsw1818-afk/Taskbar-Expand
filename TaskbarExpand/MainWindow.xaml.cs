@@ -150,9 +150,12 @@ namespace TaskbarExpand
             {
                 if (!_isAppBarRegistered) return;
 
-                var screen = _currentScreen ?? System.Windows.Forms.Screen.PrimaryScreen;
+                // 현재 마우스 위치로 화면 다시 감지 (듀얼 모니터 대응)
+                var cursorPos = System.Windows.Forms.Cursor.Position;
+                var screen = System.Windows.Forms.Screen.FromPoint(cursorPos) ?? System.Windows.Forms.Screen.PrimaryScreen;
                 if (screen == null) return;
 
+                _currentScreen = screen; // 현재 화면 업데이트
                 var workArea = screen.WorkingArea;
 
                 NativeMethods.APPBARDATA abd;

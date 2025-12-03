@@ -1,1 +1,1 @@
-🐛 세로 모드 AppBar도 workArea 기준으로 변경 - 모든 모드에서 작업표시줄과 겹침 방지
+🐛 SetAppBarPos에서도 마우스 위치로 화면 재감지 - 듀얼 모니터 정확한 workArea 적용
